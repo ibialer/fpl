@@ -9,12 +9,14 @@ import { HeadToHead } from './HeadToHead'
 import { Transactions } from './Transactions'
 import { Results } from './Results'
 import { UpcomingFixtures } from './UpcomingFixtures'
+import { WhatIf } from './WhatIf'
 import {
   ManagerWithSquad,
   FixtureWithNames,
   TransactionWithDetails,
   TeamPointsBreakdown,
   LeagueEntry,
+  WhatIfSquad,
 } from '@/lib/types'
 import { FormResult, H2HRecord } from '@/lib/api'
 
@@ -40,12 +42,14 @@ interface DashboardProps {
   h2h: Record<number, Record<number, H2HRecord>>
   entries: LeagueEntry[]
   transactions: TransactionWithDetails[]
+  whatIfSquads: WhatIfSquad[]
 }
 
 const TABS = [
   { id: 'live', label: 'Live' },
   { id: 'results', label: 'Results' },
   { id: 'fixtures', label: 'Fixtures' },
+  { id: 'whatif', label: 'What If?' },
 ]
 
 export function Dashboard({
@@ -59,6 +63,7 @@ export function Dashboard({
   h2h,
   entries,
   transactions,
+  whatIfSquads,
 }: DashboardProps) {
   const [activeTab, setActiveTab] = useState('live')
 
@@ -96,6 +101,10 @@ export function Dashboard({
 
         {activeTab === 'fixtures' && (
           <UpcomingFixtures matches={allMatches} currentEvent={currentEvent} />
+        )}
+
+        {activeTab === 'whatif' && (
+          <WhatIf squads={whatIfSquads} />
         )}
       </div>
     </div>

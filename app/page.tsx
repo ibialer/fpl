@@ -12,6 +12,8 @@ import {
   calculateTeamForm,
   calculateHeadToHead,
   fetchPointsBreakdown,
+  fetchDraftChoices,
+  processWhatIfSquads,
 } from '@/lib/api'
 import { TeamPointsBreakdown } from '@/lib/types'
 
@@ -73,6 +75,15 @@ export default async function Home() {
       Array.from(calculateHeadToHead(leagueDetails).entries()).map(([k, v]) => [k, Object.fromEntries(v)])
     )
 
+    // Fetch and process What If squads
+    let whatIfSquads: ReturnType<typeof processWhatIfSquads> = []
+    try {
+      const draftChoices = await fetchDraftChoices()
+      whatIfSquads = processWhatIfSquads(draftChoices.choices, bootstrapStatic, leagueDetails)
+    } catch (e) {
+      console.error('Failed to fetch draft choices:', e)
+    }
+
     return (
       <main className="pb-24">
         <Header
@@ -91,6 +102,7 @@ export default async function Home() {
           h2h={h2h}
           entries={leagueDetails.league_entries}
           transactions={recentTransactions}
+          whatIfSquads={whatIfSquads}
         />
 
         <RefreshButton />

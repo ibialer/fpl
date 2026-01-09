@@ -10,6 +10,10 @@ import {
   EntryPicksResponse,
   LiveEventResponse,
   TeamPointsBreakdown,
+  DraftChoicesResponse,
+  DraftChoice,
+  WhatIfSquad,
+  WhatIfPlayer,
 } from './types'
 
 const LEAGUE_ID = 37265
@@ -68,6 +72,14 @@ export async function fetchLiveEvent(event: number): Promise<LiveEventResponse> 
     cache: 'no-store',
   })
   if (!res.ok) throw new Error(`Failed to fetch live data for event ${event}`)
+  return res.json()
+}
+
+export async function fetchDraftChoices(): Promise<DraftChoicesResponse> {
+  const res = await fetch(`${getBaseUrl()}/draft/${LEAGUE_ID}/choices`, {
+    cache: 'no-store',
+  })
+  if (!res.ok) throw new Error('Failed to fetch draft choices')
   return res.json()
 }
 
@@ -438,4 +450,76 @@ export async function fetchPointsBreakdown(
   })
 
   return breakdownMap
+}
+
+// Process original draft squads for What If analysis
+export function processWhatIfSquads(
+  draftChoices: DraftChoice[],
+  bootstrapStatic: BootstrapStatic,
+  leagueDetails: LeagueDetails
+): WhatIfSquad[] {
+  // Build player lookup map
+  const playerMap = new Map<number, Player>()
+  bootstrapStatic.elements.forEach((p) => playerMap.set(p.id, p))
+
+  // Build team short name map
+  const teamShortNameMap = new Map<number, string>()
+  bootstrapStatic.teams.forEach((t) => teamShortNameMap.set(t.id, t.short_name))
+
+  // Build entry info map
+  const entryMap = new Map<number, { teamName: string; managerName: string }>()
+  leagueDetails.league_entries.forEach((e) => {
+    entryMap.set(e.entry_id, {
+      teamName: e.entry_name,
+      managerName: `${e.player_first_name} ${e.player_last_name}`,
+    })
+  })
+
+  // Group draft choices by entry
+  const choicesByEntry = new Map<number, DraftChoice[]>()
+  draftChoices.forEach((choice) => {
+    const existing = choicesByEntry.get(choice.entry) || []
+    existing.push(choice)
+    choicesByEntry.set(choice.entry, existing)
+  })
+
+  // Build What If squads
+  const squads: WhatIfSquad[] = []
+
+  choicesByEntry.forEach((choices, entryId) => {
+    const entryInfo = entryMap.get(entryId)
+    if (!entryInfo) return
+
+    // Sort choices by round
+    choices.sort((a, b) => a.round - b.round)
+
+    const players: WhatIfPlayer[] = choices.map((choice) => {
+      const player = playerMap.get(choice.element)
+      return {
+        id: choice.element,
+        name: player?.web_name || 'Unknown',
+        positionName: player ? getPositionName(player.element_type) : 'UNK',
+        teamShortName: player ? (teamShortNameMap.get(player.team) || '???') : '???',
+        totalPoints: player?.total_points || 0,
+        draftRound: choice.round,
+      }
+    })
+
+    // Players are already sorted by draft round order
+
+    const totalPoints = players.reduce((sum, p) => sum + p.totalPoints, 0)
+
+    squads.push({
+      entryId,
+      teamName: entryInfo.teamName,
+      managerName: entryInfo.managerName,
+      players,
+      totalPoints,
+    })
+  })
+
+  // Sort squads by total points descending
+  squads.sort((a, b) => b.totalPoints - a.totalPoints)
+
+  return squads
 }

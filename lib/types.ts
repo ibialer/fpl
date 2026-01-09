@@ -188,6 +188,23 @@ export interface TransactionWithDetails {
   date: string
 }
 
+// Draft Choices Response
+export interface DraftChoicesResponse {
+  choices: DraftChoice[]
+}
+
+export interface DraftChoice {
+  id: number
+  element: number
+  entry: number
+  entry_name: string
+  player_first_name: string
+  player_last_name: string
+  round: number
+  pick: number
+  index: number
+}
+
 // Entry Picks Response
 export interface EntryPicksResponse {
   picks: Pick[]
@@ -257,4 +274,22 @@ export interface TeamPointsBreakdown {
   playerName: string
   totalPoints: number
   players: PlayerPoints[]
+}
+
+// What If types
+export interface WhatIfSquad {
+  entryId: number
+  teamName: string
+  managerName: string
+  players: WhatIfPlayer[]
+  totalPoints: number
+}
+
+export interface WhatIfPlayer {
+  id: number
+  name: string
+  positionName: string
+  teamShortName: string
+  totalPoints: number
+  draftRound: number
 }
