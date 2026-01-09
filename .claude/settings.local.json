@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:draft.premierleague.com)",
+      "Bash(npm install:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(npm run build:*)",
+      "Bash(vercel:*)",
+      "Bash(npm test:*)"
+    ]
+  }
+}
