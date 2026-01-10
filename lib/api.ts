@@ -451,10 +451,10 @@ export async function fetchPointsBreakdown(
   const liveData = await fetchLiveEvent(currentEvent)
 
   // Build fixture lookup: team -> opponent info from live event data
-  const fixtureMap = new Map<number, { opponent: number; isHome: boolean }>()
+  const fixtureMap = new Map<number, { opponent: number; isHome: boolean; started: boolean }>()
   liveData.fixtures.forEach((f) => {
-    fixtureMap.set(f.team_h, { opponent: f.team_a, isHome: true })
-    fixtureMap.set(f.team_a, { opponent: f.team_h, isHome: false })
+    fixtureMap.set(f.team_h, { opponent: f.team_a, isHome: true, started: f.started })
+    fixtureMap.set(f.team_a, { opponent: f.team_h, isHome: false, started: f.started })
   })
 
   // Fetch picks for all entries in parallel
@@ -487,6 +487,7 @@ export async function fetchPointsBreakdown(
         bonus: stats?.bonus || 0,
         yellowCards: stats?.yellow_cards || 0,
         redCards: stats?.red_cards || 0,
+        hasPlayed: fixtureInfo?.started || false,
       }
     })
 

@@ -268,6 +268,7 @@ export interface PlayerPoints {
   bonus: number
   yellowCards: number
   redCards: number
+  hasPlayed: boolean
 }
 
 export interface TeamPointsBreakdown {

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { TabNavigation } from './TabNavigation'
+import { GWSummary } from './GWSummary'
 import { Fixtures } from './Fixtures'
 import { Standings } from './Standings'
 import { SummerStandings } from './SummerStandings'
@@ -76,6 +77,13 @@ export function Dashboard({
       <div className="max-w-6xl mx-auto px-4 py-6">
         {activeTab === 'live' && (
           <div className="space-y-6">
+            {/* AI-Generated GW Summary */}
+            <GWSummary
+              currentEvent={currentEvent}
+              fixtures={currentFixtures}
+              pointsBreakdown={pointsBreakdown}
+            />
+
             {/* Current Gameweek Fixtures */}
             <Fixtures
               fixtures={currentFixtures}
