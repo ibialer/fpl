@@ -182,9 +182,17 @@ export function processTransactions(
     entryMap.set(e.entry_id, `${e.player_first_name} ${e.player_last_name}`)
   })
 
-  const playersMap = new Map<number, string>()
+  const teamsMap = new Map<number, string>()
+  bootstrapStatic.teams.forEach((t) => {
+    teamsMap.set(t.id, t.short_name)
+  })
+
+  const playersMap = new Map<number, { name: string; team: string }>()
   bootstrapStatic.elements.forEach((p) => {
-    playersMap.set(p.id, p.web_name)
+    playersMap.set(p.id, {
+      name: p.web_name,
+      team: teamsMap.get(p.team) || '',
+    })
   })
 
   // Filter only successful transactions from the current gameweek
@@ -206,8 +214,10 @@ export function processTransactions(
     id: t.id,
     event: t.event,
     managerName: entryMap.get(t.entry) || 'Unknown',
-    playerIn: playersMap.get(t.element_in) || 'Unknown',
-    playerOut: playersMap.get(t.element_out) || 'Unknown',
+    playerIn: playersMap.get(t.element_in)?.name || 'Unknown',
+    playerInTeam: playersMap.get(t.element_in)?.team || '',
+    playerOut: playersMap.get(t.element_out)?.name || 'Unknown',
+    playerOutTeam: playersMap.get(t.element_out)?.team || '',
     type: t.kind === 'w' ? 'waiver' : 'free',
     date: new Date(t.added).toLocaleDateString(),
   }))

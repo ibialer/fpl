@@ -30,8 +30,10 @@ export function Transactions({ transactions, currentEvent }: TransactionsProps) 
                 <div className="font-medium text-sm">{t.managerName}</div>
                 <div className="text-sm mt-1">
                   <span className="text-[var(--success)]">+ {t.playerIn}</span>
+                  {t.playerInTeam && <span className="text-[var(--muted)]"> ({t.playerInTeam})</span>}
                   <span className="text-[var(--muted)]"> / </span>
                   <span className="text-[var(--danger)]">- {t.playerOut}</span>
+                  {t.playerOutTeam && <span className="text-[var(--muted)]"> ({t.playerOutTeam})</span>}
                 </div>
               </div>
               <div className="text-right">

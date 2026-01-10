@@ -183,7 +183,9 @@ export interface TransactionWithDetails {
   event: number
   managerName: string
   playerIn: string
+  playerInTeam: string
   playerOut: string
+  playerOutTeam: string
   type: 'waiver' | 'free'
   date: string
 }
