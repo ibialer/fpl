@@ -14,6 +14,7 @@ import {
   DraftChoice,
   WhatIfSquad,
   WhatIfPlayer,
+  DeadlineInfo,
 } from './types'
 
 const LEAGUE_ID = 37265
@@ -214,6 +215,53 @@ export function processTransactions(
 
 export function getCurrentEvent(bootstrapStatic: BootstrapStatic): number {
   return bootstrapStatic.events.current || 1
+}
+
+export function getDeadlineInfo(bootstrapStatic: BootstrapStatic): DeadlineInfo {
+  const currentEvent = bootstrapStatic.events.current || 1
+  const events = bootstrapStatic.events.data || []
+  const now = new Date()
+
+  // Find the next event with a deadline that hasn't passed yet
+  // Sort events by id to ensure we go through them in order
+  const sortedEvents = [...events].sort((a, b) => a.id - b.id)
+
+  let nextEvent = sortedEvents.find((e) => {
+    if (!e.deadline_time) return false
+    const deadline = new Date(e.deadline_time)
+    return deadline > now
+  })
+
+  // If no future deadline found, use the last event
+  if (!nextEvent) {
+    nextEvent = sortedEvents[sortedEvents.length - 1]
+  }
+
+  if (!nextEvent) {
+    return {
+      nextEvent: currentEvent,
+      waiverDeadline: null,
+      lineupDeadline: null,
+    }
+  }
+
+  const lineupDeadline = nextEvent.deadline_time
+
+  // Waiver deadline is typically ~24 hours before lineup deadline
+  // In FPL Draft, waivers process on Friday, lineups lock when first match starts
+  let waiverDeadline: string | null = null
+  if (lineupDeadline) {
+    const deadline = new Date(lineupDeadline)
+    // Waiver deadline is approximately 24 hours before lineup deadline
+    deadline.setHours(deadline.getHours() - 24)
+    waiverDeadline = deadline.toISOString()
+  }
+
+  return {
+    nextEvent: nextEvent.id,
+    waiverDeadline,
+    lineupDeadline,
+  }
 }
 
 // Calculate standings from matches starting at a specific gameweek
@@ -450,6 +498,50 @@ export async function fetchPointsBreakdown(
   })
 
   return breakdownMap
+}
+
+// Fetch points breakdown for all finished gameweeks
+export async function fetchAllPointsBreakdown(
+  leagueDetails: LeagueDetails,
+  bootstrapStatic: BootstrapStatic,
+  currentEvent: number
+): Promise<Map<number, Map<number, TeamPointsBreakdown>>> {
+  // Get all finished gameweeks from matches
+  const finishedEvents = new Set<number>()
+  leagueDetails.matches.forEach((m) => {
+    if (m.finished) {
+      finishedEvents.add(m.event)
+    }
+  })
+
+  // Also include current event if it has started
+  const currentMatch = leagueDetails.matches.find((m) => m.event === currentEvent && m.started)
+  if (currentMatch) {
+    finishedEvents.add(currentEvent)
+  }
+
+  const events = Array.from(finishedEvents).sort((a, b) => b - a)
+
+  // Fetch breakdown for each event in parallel
+  const breakdownPromises = events.map(async (event) => {
+    try {
+      const breakdown = await fetchPointsBreakdown(leagueDetails, bootstrapStatic, event)
+      return { event, breakdown }
+    } catch (e) {
+      console.error(`Failed to fetch breakdown for GW ${event}:`, e)
+      return { event, breakdown: new Map<number, TeamPointsBreakdown>() }
+    }
+  })
+
+  const results = await Promise.all(breakdownPromises)
+
+  // Build nested map: event -> entryId -> breakdown
+  const allBreakdowns = new Map<number, Map<number, TeamPointsBreakdown>>()
+  results.forEach(({ event, breakdown }) => {
+    allBreakdowns.set(event, breakdown)
+  })
+
+  return allBreakdowns
 }
 
 // Process original draft squads for What If analysis

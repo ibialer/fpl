@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "predeploy": "npm test",
+    "deploy": "npm run predeploy && vercel --prod"
   },
   "dependencies": {
     "next": "^16.1.1",

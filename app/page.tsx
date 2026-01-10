@@ -8,10 +8,11 @@ import {
   processAllMatches,
   processTransactions,
   getCurrentEvent,
+  getDeadlineInfo,
   calculateStandingsFromGameweek,
   calculateTeamForm,
   calculateHeadToHead,
-  fetchPointsBreakdown,
+  fetchAllPointsBreakdown,
   fetchDraftChoices,
   processWhatIfSquads,
 } from '@/lib/api'
@@ -27,6 +28,7 @@ export default async function Home() {
       await fetchAllData()
 
     const currentEvent = getCurrentEvent(bootstrapStatic)
+    const deadlineInfo = getDeadlineInfo(bootstrapStatic)
     const managers = processManagersWithSquads(
       leagueDetails,
       elementStatus,
@@ -35,13 +37,16 @@ export default async function Home() {
     const currentFixtures = processFixtures(leagueDetails, currentEvent)
     const allMatches = processAllMatches(leagueDetails)
 
-    // Fetch points breakdown for the current gameweek
-    let pointsBreakdown: Map<number, TeamPointsBreakdown> = new Map()
+    // Fetch points breakdown for all finished gameweeks
+    let allPointsBreakdown: Map<number, Map<number, TeamPointsBreakdown>> = new Map()
     try {
-      pointsBreakdown = await fetchPointsBreakdown(leagueDetails, bootstrapStatic, currentEvent)
+      allPointsBreakdown = await fetchAllPointsBreakdown(leagueDetails, bootstrapStatic, currentEvent)
     } catch (e) {
       console.error('Failed to fetch points breakdown:', e)
     }
+
+    // Get current event breakdown for the Live tab
+    const pointsBreakdown = allPointsBreakdown.get(currentEvent) || new Map()
 
     const recentTransactions = processTransactions(
       transactions,
@@ -89,6 +94,7 @@ export default async function Home() {
         <Header
           leagueName={leagueDetails.league.name}
           currentEvent={currentEvent}
+          deadlineInfo={deadlineInfo}
         />
 
         <Dashboard
@@ -97,6 +103,12 @@ export default async function Home() {
           currentFixtures={currentFixtures}
           allMatches={allMatches}
           pointsBreakdown={Object.fromEntries(pointsBreakdown)}
+          allPointsBreakdown={Object.fromEntries(
+            Array.from(allPointsBreakdown.entries()).map(([event, breakdown]) => [
+              event,
+              Object.fromEntries(breakdown)
+            ])
+          )}
           form={form}
           summerStandings={summerStandings}
           h2h={h2h}

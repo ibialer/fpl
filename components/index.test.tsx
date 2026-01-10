@@ -1,0 +1,244 @@
+/**
+ * Component Tests
+ *
+ * These tests verify that our UI components render correctly and respond to user interactions.
+ */
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
+
+// Cleanup after each test to prevent DOM pollution
+afterEach(() => {
+  cleanup()
+})
+
+// Import all components
+import { Header } from './Header'
+import { TabNavigation } from './TabNavigation'
+import { Standings } from './Standings'
+import { SummerStandings } from './SummerStandings'
+import { HeadToHead } from './HeadToHead'
+import { Transactions } from './Transactions'
+import { Results } from './Results'
+import { UpcomingFixtures } from './UpcomingFixtures'
+import { WhatIf } from './WhatIf'
+import { Fixtures } from './Fixtures'
+
+// ===== HEADER =====
+describe('Header', () => {
+  const deadlineInfo = {
+    nextEvent: 22,
+    waiverDeadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // tomorrow
+    lineupDeadline: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(), // 2 days
+  }
+
+  it('renders league name and gameweek', () => {
+    render(<Header leagueName="Hogwarts League" currentEvent={21} deadlineInfo={deadlineInfo} />)
+    expect(screen.getByText('Hogwarts League')).toBeInTheDocument()
+    expect(screen.getByText('Gameweek 21')).toBeInTheDocument()
+  })
+
+  it('renders deadline info', () => {
+    render(<Header leagueName="Hogwarts League" currentEvent={21} deadlineInfo={deadlineInfo} />)
+    expect(screen.getByText('Waivers:')).toBeInTheDocument()
+    expect(screen.getByText('Lineups:')).toBeInTheDocument()
+  })
+})
+
+// ===== TAB NAVIGATION =====
+describe('TabNavigation', () => {
+  const tabs = [
+    { id: 'live', label: 'Live' },
+    { id: 'results', label: 'Results' },
+  ]
+
+  it('renders all tabs and handles clicks', () => {
+    const onTabChange = vi.fn()
+    render(<TabNavigation tabs={tabs} activeTab="live" onTabChange={onTabChange} />)
+
+    expect(screen.getByText('Live')).toBeInTheDocument()
+    expect(screen.getByText('Results')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Results'))
+    expect(onTabChange).toHaveBeenCalledWith('results')
+  })
+})
+
+// ===== STANDINGS =====
+describe('Standings', () => {
+  const mockManager = {
+    entry: {
+      id: 1, entry_id: 100, entry_name: 'Test Team',
+      player_first_name: 'John', player_last_name: 'Doe',
+      short_name: 'JD', waiver_pick: 1,
+    },
+    standing: {
+      league_entry: 1, rank: 1, last_rank: 1, rank_sort: 1,
+      matches_played: 10, matches_won: 6, matches_drawn: 2, matches_lost: 2,
+      points_for: 450, points_against: 380, total: 20,
+    },
+    squad: [],
+  }
+
+  it('renders standings table with team data', () => {
+    render(<Standings managers={[mockManager]} form={{}} />)
+    expect(screen.getByText('Standings')).toBeInTheDocument()
+    expect(screen.getByText('Test Team')).toBeInTheDocument()
+  })
+
+  it('shows form indicators when provided', () => {
+    const { container } = render(<Standings managers={[mockManager]} form={{ 1: ['W', 'L'] }} />)
+    expect(container.textContent).toMatch(/🟢|🔴/)
+  })
+})
+
+// ===== SUMMER STANDINGS =====
+describe('SummerStandings', () => {
+  const createStanding = (id: number, name: string, wins: number) => ({
+    entry: {
+      id, entry_id: id * 100, entry_name: name,
+      player_first_name: 'Player', player_last_name: String(id),
+      short_name: name.substring(0, 2), waiver_pick: id,
+    },
+    wins, draws: 0, losses: 0, pointsFor: 100, pointsAgainst: 80,
+    total: wins * 3, rank: 0,
+  })
+
+  it('shows not started message when no matches', () => {
+    const standings = [createStanding(1, 'Team', 0)]
+    standings[0].wins = 0
+    standings[0].total = 0
+    render(<SummerStandings standings={standings} />)
+    expect(screen.getByText('Starts from Gameweek 20')).toBeInTheDocument()
+  })
+
+  it('renders standings when matches played', () => {
+    render(<SummerStandings standings={[createStanding(1, 'Active Team', 2)]} />)
+    expect(screen.getAllByText('Summer Championship').length).toBeGreaterThan(0)
+    expect(screen.getByText('Active Team')).toBeInTheDocument()
+  })
+})
+
+// ===== HEAD TO HEAD =====
+describe('HeadToHead', () => {
+  const entries = [
+    { id: 1, entry_id: 100, entry_name: 'Team A', player_first_name: 'A', player_last_name: 'A', short_name: 'TA', waiver_pick: 1 },
+    { id: 2, entry_id: 200, entry_name: 'Team B', player_first_name: 'B', player_last_name: 'B', short_name: 'TB', waiver_pick: 2 },
+  ]
+
+  it('renders H2H matrix', () => {
+    render(<HeadToHead entries={entries} h2h={{}} />)
+    expect(screen.getByText('Head to Head')).toBeInTheDocument()
+    expect(screen.getAllByText('TA').length).toBe(2) // header and row
+  })
+})
+
+// ===== TRANSACTIONS =====
+describe('Transactions', () => {
+  it('shows empty state when no transactions', () => {
+    render(<Transactions transactions={[]} currentEvent={21} />)
+    expect(screen.getByText('No transactions this gameweek')).toBeInTheDocument()
+  })
+
+  it('renders transactions list', () => {
+    const transactions = [{
+      id: 1, event: 21, managerName: 'Manager', playerIn: 'Salah',
+      playerOut: 'Bruno', type: 'waiver' as const, date: '2024-01-01',
+    }]
+    render(<Transactions transactions={transactions} currentEvent={21} />)
+    expect(screen.getByText('Manager')).toBeInTheDocument()
+    expect(screen.getByText('Waiver')).toBeInTheDocument()
+  })
+})
+
+// ===== RESULTS =====
+describe('Results', () => {
+  const createMatch = (event: number, finished: boolean) => ({
+    event, team1Id: 1, team1Name: `Team ${event}A`, team1PlayerName: 'Player A',
+    team1Points: 50, team2Id: 2, team2Name: `Team ${event}B`, team2PlayerName: 'Player B',
+    team2Points: 40, finished, started: finished, winner: finished ? `Team ${event}A` : null,
+  })
+
+  it('shows empty state when no results', () => {
+    render(<Results matches={[]} currentEvent={21} allPointsBreakdown={{}} />)
+    expect(screen.getByText('No results yet')).toBeInTheDocument()
+  })
+
+  it('renders finished matches grouped by gameweek', () => {
+    const { container } = render(<Results matches={[createMatch(20, true), createMatch(21, true)]} currentEvent={21} allPointsBreakdown={{}} />)
+    expect(container.textContent).toContain('Gameweek 20')
+    expect(container.textContent).toContain('Gameweek 21')
+  })
+})
+
+// ===== UPCOMING FIXTURES =====
+describe('UpcomingFixtures', () => {
+  const createMatch = (event: number) => ({
+    event, team1Id: 1, team1Name: `Team ${event}A`, team1PlayerName: 'Player A',
+    team1Points: 0, team2Id: 2, team2Name: `Team ${event}B`, team2PlayerName: 'Player B',
+    team2Points: 0, finished: false, started: false, winner: null,
+  })
+
+  it('shows empty state when no fixtures', () => {
+    render(<UpcomingFixtures matches={[]} currentEvent={21} />)
+    expect(screen.getByText('No upcoming fixtures')).toBeInTheDocument()
+  })
+
+  it('renders upcoming fixtures', () => {
+    render(<UpcomingFixtures matches={[createMatch(22)]} currentEvent={21} />)
+    expect(screen.getByText('Gameweek 22')).toBeInTheDocument()
+  })
+})
+
+// ===== FIXTURES =====
+describe('Fixtures', () => {
+  const fixture = {
+    event: 21, team1Id: 1, team1Name: 'Home Team', team1PlayerName: 'Manager A',
+    team1Points: 55, team2Id: 2, team2Name: 'Away Team', team2PlayerName: 'Manager B',
+    team2Points: 42, finished: true, started: true, winner: 'Home Team',
+  }
+
+  it('shows empty state when no fixtures', () => {
+    render(<Fixtures fixtures={[]} currentEvent={21} pointsBreakdown={{}} />)
+    expect(screen.getByText('No fixtures this week')).toBeInTheDocument()
+  })
+
+  it('renders fixtures with scores', () => {
+    const { container } = render(<Fixtures fixtures={[fixture]} currentEvent={21} pointsBreakdown={{}} />)
+    expect(container.textContent).toContain('Gameweek 21')
+    expect(container.textContent).toContain('Home Team')
+    expect(container.textContent).toContain('55')
+  })
+
+  it('shows LIVE indicator for ongoing matches', () => {
+    const liveFixture = { ...fixture, finished: false }
+    render(<Fixtures fixtures={[liveFixture]} currentEvent={21} pointsBreakdown={{}} />)
+    expect(screen.getByText('LIVE')).toBeInTheDocument()
+  })
+})
+
+// ===== WHAT IF =====
+describe('WhatIf', () => {
+  const squad = {
+    entryId: 1, teamName: 'Draft Team', managerName: 'Manager',
+    players: [{ id: 1, name: 'Salah', positionName: 'MID', teamShortName: 'LIV', totalPoints: 150, draftRound: 1 }],
+    totalPoints: 500,
+  }
+
+  it('shows empty state when no squads', () => {
+    render(<WhatIf squads={[]} />)
+    expect(screen.getByText('No draft data available')).toBeInTheDocument()
+  })
+
+  it('renders squad rankings', () => {
+    render(<WhatIf squads={[squad]} />)
+    expect(screen.getByText('Draft Team')).toBeInTheDocument()
+    expect(screen.getByText('500')).toBeInTheDocument()
+  })
+
+  it('expands to show players when clicked', () => {
+    const { container } = render(<WhatIf squads={[squad]} />)
+    const showButton = container.querySelector('button')
+    if (showButton) fireEvent.click(showButton)
+    expect(screen.getByText('Salah')).toBeInTheDocument()
+  })
+})

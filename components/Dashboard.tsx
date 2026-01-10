@@ -37,6 +37,7 @@ interface DashboardProps {
   currentFixtures: FixtureWithNames[]
   allMatches: FixtureWithNames[]
   pointsBreakdown: Record<number, TeamPointsBreakdown>
+  allPointsBreakdown: Record<number, Record<number, TeamPointsBreakdown>>
   form: Record<number, FormResult[]>
   summerStandings: SummerStandingEntry[]
   h2h: Record<number, Record<number, H2HRecord>>
@@ -58,6 +59,7 @@ export function Dashboard({
   currentFixtures,
   allMatches,
   pointsBreakdown,
+  allPointsBreakdown,
   form,
   summerStandings,
   h2h,
@@ -96,7 +98,7 @@ export function Dashboard({
         )}
 
         {activeTab === 'results' && (
-          <Results matches={allMatches} currentEvent={currentEvent} />
+          <Results matches={allMatches} currentEvent={currentEvent} allPointsBreakdown={allPointsBreakdown} />
         )}
 
         {activeTab === 'fixtures' && (

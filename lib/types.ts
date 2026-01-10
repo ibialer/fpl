@@ -293,3 +293,10 @@ export interface WhatIfPlayer {
   totalPoints: number
   draftRound: number
 }
+
+// Deadline info
+export interface DeadlineInfo {
+  nextEvent: number
+  waiverDeadline: string | null
+  lineupDeadline: string | null
+}
