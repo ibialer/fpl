@@ -2,9 +2,16 @@ import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { FixtureWithNames, TeamPointsBreakdown } from '@/lib/types'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Lazy initialization to avoid build-time errors when OPENAI_API_KEY is not set
+let openai: OpenAI | null = null
+function getOpenAI() {
+  if (!openai) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    })
+  }
+  return openai
+}
 
 interface GWSummaryRequest {
   currentEvent: number
@@ -95,7 +102,7 @@ ${m.team2PlayersToPlay.length > 0 ? `- ${m.team2} players yet to play: ${m.team2
 
 Write a brief, entertaining summary of the gameweek. If matches are in progress, focus on the drama and what's still to come. If finished, summarize the results.`
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-5-nano',
       messages: [
         { role: 'system', content: systemPrompt },
