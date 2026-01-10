@@ -103,12 +103,13 @@ ${m.team2PlayersToPlay.length > 0 ? `- ${m.team2} players yet to play: ${m.team2
 Write a brief, entertaining summary of the gameweek. If matches are in progress, focus on the drama and what's still to come. If finished, summarize the results.`
 
     const completion = await getOpenAI().chat.completions.create({
-      model: 'gpt-5-nano',
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      max_completion_tokens: 2000,
+      max_tokens: 500,
+      temperature: 0.8,
     })
 
     const summary = completion.choices[0]?.message?.content || 'Unable to generate summary.'
