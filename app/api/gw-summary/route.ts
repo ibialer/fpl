@@ -101,7 +101,7 @@ Write a brief, entertaining summary of the gameweek. If matches are in progress,
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      max_tokens: 500,
+      max_completion_tokens: 500,
       temperature: 0.8,
     })
 
