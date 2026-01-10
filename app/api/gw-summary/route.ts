@@ -102,7 +102,6 @@ Write a brief, entertaining summary of the gameweek. If matches are in progress,
         { role: 'user', content: userPrompt },
       ],
       max_completion_tokens: 500,
-      temperature: 0.8,
     })
 
     const summary = completion.choices[0]?.message?.content || 'Unable to generate summary.'
