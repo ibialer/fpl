@@ -101,21 +101,10 @@ Write a brief, entertaining summary of the gameweek. If matches are in progress,
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      max_completion_tokens: 500,
+      max_completion_tokens: 2000,
     })
 
-    console.log('OpenAI response:', JSON.stringify(completion, null, 2))
-
     const summary = completion.choices[0]?.message?.content || 'Unable to generate summary.'
-
-    // Debug: return full response if summary is empty
-    if (!completion.choices[0]?.message?.content) {
-      return NextResponse.json({
-        summary: 'Debug: No content in response',
-        status: gwStatus,
-        debug: completion,
-      })
-    }
 
     return NextResponse.json({
       summary,
