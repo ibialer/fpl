@@ -44,6 +44,7 @@ interface DashboardProps {
   h2h: Record<number, Record<number, H2HRecord>>
   entries: LeagueEntry[]
   transactions: TransactionWithDetails[]
+  transactionsEvent: number
   whatIfSquads: WhatIfSquad[]
 }
 
@@ -66,6 +67,7 @@ export function Dashboard({
   h2h,
   entries,
   transactions,
+  transactionsEvent,
   whatIfSquads,
 }: DashboardProps) {
   const [activeTab, setActiveTab] = useState('live')
@@ -101,7 +103,7 @@ export function Dashboard({
             <HeadToHead entries={entries} h2h={h2h} />
 
             {/* Transactions */}
-            <Transactions transactions={transactions} currentEvent={currentEvent} />
+            <Transactions transactions={transactions} currentEvent={transactionsEvent} />
           </div>
         )}
 

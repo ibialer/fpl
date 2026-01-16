@@ -227,6 +227,26 @@ export function getCurrentEvent(bootstrapStatic: BootstrapStatic): number {
   return bootstrapStatic.events.current || 1
 }
 
+// Determine which GW's transactions to display
+// After waiver deadline passes but before the GW starts, show the upcoming GW's transactions
+export function getTransactionsEvent(
+  currentEvent: number,
+  deadlineInfo: DeadlineInfo
+): number {
+  const now = new Date()
+
+  // If waiver deadline for next GW has passed and next GW is different from current
+  if (
+    deadlineInfo.waiverDeadline &&
+    deadlineInfo.nextEvent > currentEvent &&
+    now > new Date(deadlineInfo.waiverDeadline)
+  ) {
+    return deadlineInfo.nextEvent
+  }
+
+  return currentEvent
+}
+
 export function getDeadlineInfo(bootstrapStatic: BootstrapStatic): DeadlineInfo {
   const currentEvent = bootstrapStatic.events.current || 1
   const events = bootstrapStatic.events.data || []

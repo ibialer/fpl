@@ -7,11 +7,13 @@ import {
   calculateHeadToHead,
   getCurrentEvent,
   getPositionName,
+  getTransactionsEvent,
 } from './api'
 import {
   LeagueDetails,
   TransactionsResponse,
   BootstrapStatic,
+  DeadlineInfo,
 } from './types'
 
 // Mock data factories
@@ -437,5 +439,61 @@ describe('calculateHeadToHead', () => {
     expect(team1VsTeam2?.wins).toBe(1)
     expect(team1VsTeam2?.draws).toBe(0)
     expect(team1VsTeam2?.losses).toBe(0)
+  })
+})
+
+describe('getTransactionsEvent', () => {
+  it('returns currentEvent when waiver deadline has not passed', () => {
+    const currentEvent = 21
+    const futureDate = new Date()
+    futureDate.setHours(futureDate.getHours() + 24)
+
+    const deadlineInfo: DeadlineInfo = {
+      nextEvent: 22,
+      waiverDeadline: futureDate.toISOString(),
+      lineupDeadline: futureDate.toISOString(),
+    }
+
+    expect(getTransactionsEvent(currentEvent, deadlineInfo)).toBe(21)
+  })
+
+  it('returns nextEvent when waiver deadline has passed', () => {
+    const currentEvent = 21
+    const pastDate = new Date()
+    pastDate.setHours(pastDate.getHours() - 1)
+
+    const deadlineInfo: DeadlineInfo = {
+      nextEvent: 22,
+      waiverDeadline: pastDate.toISOString(),
+      lineupDeadline: new Date().toISOString(),
+    }
+
+    expect(getTransactionsEvent(currentEvent, deadlineInfo)).toBe(22)
+  })
+
+  it('returns currentEvent when nextEvent equals currentEvent', () => {
+    const currentEvent = 21
+    const pastDate = new Date()
+    pastDate.setHours(pastDate.getHours() - 1)
+
+    const deadlineInfo: DeadlineInfo = {
+      nextEvent: 21, // Same as current
+      waiverDeadline: pastDate.toISOString(),
+      lineupDeadline: new Date().toISOString(),
+    }
+
+    expect(getTransactionsEvent(currentEvent, deadlineInfo)).toBe(21)
+  })
+
+  it('returns currentEvent when waiverDeadline is null', () => {
+    const currentEvent = 21
+
+    const deadlineInfo: DeadlineInfo = {
+      nextEvent: 22,
+      waiverDeadline: null,
+      lineupDeadline: null,
+    }
+
+    expect(getTransactionsEvent(currentEvent, deadlineInfo)).toBe(21)
   })
 })

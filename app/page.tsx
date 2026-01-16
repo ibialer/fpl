@@ -9,6 +9,7 @@ import {
   processTransactions,
   getCurrentEvent,
   getDeadlineInfo,
+  getTransactionsEvent,
   calculateStandingsFromGameweek,
   calculateTeamForm,
   calculateHeadToHead,
@@ -48,11 +49,14 @@ export default async function Home() {
     // Get current event breakdown for the Live tab
     const pointsBreakdown = allPointsBreakdown.get(currentEvent) || new Map()
 
+    // Determine which GW's transactions to show
+    // After waiver deadline passes, show transactions for the upcoming GW
+    const transactionsEvent = getTransactionsEvent(currentEvent, deadlineInfo)
     const recentTransactions = processTransactions(
       transactions,
       leagueDetails,
       bootstrapStatic,
-      currentEvent
+      transactionsEvent
     )
 
     // Calculate Summer Championship standings (from GW 20 onwards)
@@ -114,6 +118,7 @@ export default async function Home() {
           h2h={h2h}
           entries={leagueDetails.league_entries}
           transactions={recentTransactions}
+          transactionsEvent={transactionsEvent}
           whatIfSquads={whatIfSquads}
         />
 
