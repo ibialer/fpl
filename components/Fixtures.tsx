@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { FixtureWithNames, TeamPointsBreakdown, PlayerPoints } from '@/lib/types'
 
 interface FixturesProps {
@@ -11,7 +11,7 @@ interface FixturesProps {
 
 // Helper to render stat icons
 function StatIcons({ player }: { player: PlayerPoints }) {
-  const icons: string[] = []
+  const icons: React.ReactNode[] = []
 
   // Goals (one ball per goal)
   for (let i = 0; i < player.goals; i++) {
@@ -28,6 +28,15 @@ function StatIcons({ player }: { player: PlayerPoints }) {
     icons.push('🛡️')
   }
 
+  // Defensive contribution (only for DEF and MID, show count)
+  if (player.defensiveContribution > 0 && ['DEF', 'MID'].includes(player.positionName)) {
+    icons.push(
+      <span key="dc" className="text-[var(--accent)]" title="Defensive contributions">
+        🦺{player.defensiveContribution}
+      </span>
+    )
+  }
+
   // Yellow cards
   for (let i = 0; i < player.yellowCards; i++) {
     icons.push('🟨')
@@ -40,7 +49,7 @@ function StatIcons({ player }: { player: PlayerPoints }) {
 
   if (icons.length === 0) return null
 
-  return <span className="ml-1">{icons.join('')}</span>
+  return <span className="ml-1">{icons}</span>
 }
 
 export function Fixtures({ fixtures, currentEvent, pointsBreakdown }: FixturesProps) {

@@ -259,6 +259,39 @@ describe('Fixtures', () => {
     const homeTeamElement = screen.getByText('Home Team')
     expect(homeTeamElement.className).toContain('text-[var(--success)]')
   })
+
+  it('shows defensive contribution for DEF and MID players', () => {
+    const breakdownWithPlayers = {
+      1: {
+        entryId: 1, teamName: 'Home Team', playerName: 'Manager A',
+        totalPoints: 55, players: [
+          { name: 'Defender', points: 6, position: 1, isBenched: false, positionName: 'DEF',
+            teamShortName: 'ARS', opponentShortName: 'CHE', isHome: true, goals: 0, assists: 0,
+            cleanSheet: true, bonus: 0, yellowCards: 0, redCards: 0, hasPlayed: true, defensiveContribution: 5 },
+          { name: 'Midfielder', points: 8, position: 2, isBenched: false, positionName: 'MID',
+            teamShortName: 'ARS', opponentShortName: 'CHE', isHome: true, goals: 1, assists: 0,
+            cleanSheet: false, bonus: 0, yellowCards: 0, redCards: 0, hasPlayed: true, defensiveContribution: 3 },
+          { name: 'Forward', points: 10, position: 3, isBenched: false, positionName: 'FWD',
+            teamShortName: 'ARS', opponentShortName: 'CHE', isHome: true, goals: 2, assists: 0,
+            cleanSheet: false, bonus: 0, yellowCards: 0, redCards: 0, hasPlayed: true, defensiveContribution: 2 },
+        ],
+      },
+      2: {
+        entryId: 2, teamName: 'Away Team', playerName: 'Manager B',
+        totalPoints: 42, players: [],
+      },
+    }
+    const { container } = render(
+      <Fixtures fixtures={[fixture]} currentEvent={21} pointsBreakdown={breakdownWithPlayers} />
+    )
+    // Click to expand the fixture
+    const button = container.querySelector('button')
+    if (button) fireEvent.click(button)
+    // Should show defensive contribution count for DEF (5) and MID (3) but not FWD
+    expect(container.textContent).toContain('🦺5')
+    expect(container.textContent).toContain('🦺3')
+    expect(container.textContent).not.toContain('🦺2') // FWD should not show defensive contribution
+  })
 })
 
 // ===== WHAT IF =====

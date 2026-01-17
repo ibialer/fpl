@@ -508,6 +508,7 @@ export async function fetchPointsBreakdown(
         yellowCards: stats?.yellow_cards || 0,
         redCards: stats?.red_cards || 0,
         hasPlayed: fixtureInfo?.started || false,
+        defensiveContribution: stats?.defensive_contribution || 0,
       }
     })
 

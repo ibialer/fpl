@@ -239,6 +239,11 @@ export interface LiveElement {
     penalties_missed: number
     penalties_saved: number
     saves: number
+    // Defensive stats
+    clearances_blocks_interceptions: number
+    recoveries: number
+    tackles: number
+    defensive_contribution: number
   }
   explain: Array<[Array<{ name: string; points: number; value: number; stat: string }>, number]>
 }
@@ -269,6 +274,8 @@ export interface PlayerPoints {
   yellowCards: number
   redCards: number
   hasPlayed: boolean
+  // Defensive stats (for DEF and MID)
+  defensiveContribution: number
 }
 
 export interface TeamPointsBreakdown {
