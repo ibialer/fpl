@@ -288,9 +288,9 @@ describe('Fixtures', () => {
     const button = container.querySelector('button')
     if (button) fireEvent.click(button)
     // Should show defensive contribution count for DEF (5) and MID (3) but not FWD
-    expect(container.textContent).toContain('🦺5')
-    expect(container.textContent).toContain('🦺3')
-    expect(container.textContent).not.toContain('🦺2') // FWD should not show defensive contribution
+    expect(container.textContent).toContain('DC:5')
+    expect(container.textContent).toContain('DC:3')
+    expect(container.textContent).not.toContain('DC:2') // FWD should not show defensive contribution
   })
 })
 

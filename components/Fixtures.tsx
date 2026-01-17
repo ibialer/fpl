@@ -31,8 +31,8 @@ function StatIcons({ player }: { player: PlayerPoints }) {
   // Defensive contribution (only for DEF and MID, show count)
   if (player.defensiveContribution > 0 && ['DEF', 'MID'].includes(player.positionName)) {
     icons.push(
-      <span key="dc" className="text-[var(--accent)]" title="Defensive contributions">
-        🦺{player.defensiveContribution}
+      <span key="dc" className="text-[var(--muted)] text-[10px]" title="Defensive contributions">
+        DC:{player.defensiveContribution}
       </span>
     )
   }
