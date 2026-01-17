@@ -197,6 +197,17 @@ describe('Fixtures', () => {
     team2Points: 42, finished: true, started: true, winner: 'Home Team',
   }
 
+  const createPointsBreakdown = (team1Total: number, team2Total: number) => ({
+    1: {
+      entryId: 1, teamName: 'Home Team', playerName: 'Manager A',
+      totalPoints: team1Total, players: [],
+    },
+    2: {
+      entryId: 2, teamName: 'Away Team', playerName: 'Manager B',
+      totalPoints: team2Total, players: [],
+    },
+  })
+
   it('shows empty state when no fixtures', () => {
     render(<Fixtures fixtures={[]} currentEvent={21} pointsBreakdown={{}} />)
     expect(screen.getByText('No fixtures this week')).toBeInTheDocument()
@@ -213,6 +224,40 @@ describe('Fixtures', () => {
     const liveFixture = { ...fixture, finished: false }
     render(<Fixtures fixtures={[liveFixture]} currentEvent={21} pointsBreakdown={{}} />)
     expect(screen.getByText('LIVE')).toBeInTheDocument()
+  })
+
+  it('uses calculated points from breakdown during live GW', () => {
+    const liveFixture = { ...fixture, finished: false, team1Points: 0, team2Points: 0 }
+    const breakdown = createPointsBreakdown(67, 54)
+    const { container } = render(
+      <Fixtures fixtures={[liveFixture]} currentEvent={21} pointsBreakdown={breakdown} />
+    )
+    // Should show calculated points (67, 54) not API points (0, 0)
+    expect(container.textContent).toContain('67')
+    expect(container.textContent).toContain('54')
+    expect(container.textContent).not.toMatch(/\b0\b.*:.*\b0\b/) // Not showing 0 : 0
+  })
+
+  it('uses API points when GW is finished', () => {
+    const finishedFixture = { ...fixture, finished: true, team1Points: 55, team2Points: 42 }
+    const breakdown = createPointsBreakdown(67, 54) // Different from API points
+    const { container } = render(
+      <Fixtures fixtures={[finishedFixture]} currentEvent={21} pointsBreakdown={breakdown} />
+    )
+    // Should show API points (55, 42) not calculated points (67, 54)
+    expect(container.textContent).toContain('55')
+    expect(container.textContent).toContain('42')
+  })
+
+  it('highlights leading team during live match', () => {
+    const liveFixture = { ...fixture, finished: false, team1Points: 0, team2Points: 0 }
+    const breakdown = createPointsBreakdown(67, 54)
+    const { container } = render(
+      <Fixtures fixtures={[liveFixture]} currentEvent={21} pointsBreakdown={breakdown} />
+    )
+    // Home Team (67 pts) should be highlighted as they are leading
+    const homeTeamElement = screen.getByText('Home Team')
+    expect(homeTeamElement.className).toContain('text-[var(--success)]')
   })
 })
 
