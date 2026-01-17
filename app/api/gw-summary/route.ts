@@ -55,23 +55,28 @@ export async function POST(request: Request) {
         ? team2Played.reduce((max, p) => (p.points > max.points ? p : max), team2Played[0])
         : null
 
+      // Use calculated points from breakdown during live GW, API points when finished
+      const isLive = fixture.started && !fixture.finished
+      const team1Points = isLive && team1Breakdown ? team1Breakdown.totalPoints : fixture.team1Points
+      const team2Points = isLive && team2Breakdown ? team2Breakdown.totalPoints : fixture.team2Points
+
       return {
         team1: fixture.team1Name,
         team1Manager: fixture.team1PlayerName,
-        team1Points: fixture.team1Points,
+        team1Points,
         team2: fixture.team2Name,
         team2Manager: fixture.team2PlayerName,
-        team2Points: fixture.team2Points,
+        team2Points,
         finished: fixture.finished,
         started: fixture.started,
         team1TopScorer: team1TopScorer ? `${team1TopScorer.name} (${team1TopScorer.points}pts)` : null,
         team2TopScorer: team2TopScorer ? `${team2TopScorer.name} (${team2TopScorer.points}pts)` : null,
         team1PlayersToPlay: team1ToPlay.map((p) => `${p.name} (${p.teamShortName})`),
         team2PlayersToPlay: team2ToPlay.map((p) => `${p.name} (${p.teamShortName})`),
-        pointsDifference: Math.abs(fixture.team1Points - fixture.team2Points),
-        leader: fixture.team1Points > fixture.team2Points
+        pointsDifference: Math.abs(team1Points - team2Points),
+        leader: team1Points > team2Points
           ? fixture.team1Name
-          : fixture.team2Points > fixture.team1Points
+          : team2Points > team1Points
             ? fixture.team2Name
             : 'tied',
       }
