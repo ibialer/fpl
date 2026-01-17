@@ -69,6 +69,11 @@ export function Fixtures({ fixtures, currentEvent, pointsBreakdown }: FixturesPr
           const team2Breakdown = pointsBreakdown[f.team2Id]
           const hasBreakdown = team1Breakdown && team2Breakdown
 
+          // Use calculated points from breakdown during live GW, API points when finished
+          const isLive = f.started && !f.finished
+          const team1Points = isLive && team1Breakdown ? team1Breakdown.totalPoints : f.team1Points
+          const team2Points = isLive && team2Breakdown ? team2Breakdown.totalPoints : f.team2Points
+
           return (
             <div key={i}>
               <button
@@ -80,7 +85,7 @@ export function Fixtures({ fixtures, currentEvent, pointsBreakdown }: FixturesPr
                   <div className="flex-1 text-right">
                     <div
                       className={`font-medium ${
-                        f.finished && f.team1Points > f.team2Points
+                        f.started && team1Points > team2Points
                           ? 'text-[var(--success)]'
                           : ''
                       }`}
@@ -92,28 +97,28 @@ export function Fixtures({ fixtures, currentEvent, pointsBreakdown }: FixturesPr
                   <div className="flex items-center gap-2 px-3">
                     <span
                       className={`text-lg font-bold min-w-[2ch] text-right ${
-                        f.finished && f.team1Points > f.team2Points
+                        f.started && team1Points > team2Points
                           ? 'text-[var(--success)]'
                           : ''
                       }`}
                     >
-                      {f.started ? f.team1Points : '-'}
+                      {f.started ? team1Points : '-'}
                     </span>
                     <span className="text-[var(--muted)]">:</span>
                     <span
                       className={`text-lg font-bold min-w-[2ch] text-left ${
-                        f.finished && f.team2Points > f.team1Points
+                        f.started && team2Points > team1Points
                           ? 'text-[var(--success)]'
                           : ''
                       }`}
                     >
-                      {f.started ? f.team2Points : '-'}
+                      {f.started ? team2Points : '-'}
                     </span>
                   </div>
                   <div className="flex-1 text-left">
                     <div
                       className={`font-medium ${
-                        f.finished && f.team2Points > f.team1Points
+                        f.started && team2Points > team1Points
                           ? 'text-[var(--success)]'
                           : ''
                       }`}
