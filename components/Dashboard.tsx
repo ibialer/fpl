@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { TabNavigation } from './TabNavigation'
+import { TabNavigation, TabIcons } from './TabNavigation'
 import { GWSummary } from './GWSummary'
 import { Fixtures } from './Fixtures'
 import { Standings } from './Standings'
@@ -49,10 +49,10 @@ interface DashboardProps {
 }
 
 const TABS = [
-  { id: 'live', label: 'Live' },
-  { id: 'results', label: 'Results' },
-  { id: 'fixtures', label: 'Fixtures' },
-  { id: 'whatif', label: 'What If?' },
+  { id: 'live', label: 'Live', icon: TabIcons.live },
+  { id: 'results', label: 'Results', icon: TabIcons.results },
+  { id: 'fixtures', label: 'Fixtures', icon: TabIcons.fixtures },
+  { id: 'whatif', label: 'What If?', icon: TabIcons.whatif },
 ]
 
 export function Dashboard({
@@ -73,13 +73,19 @@ export function Dashboard({
   const [activeTab, setActiveTab] = useState('live')
 
   return (
-    <div>
+    <div className="min-h-screen">
       <TabNavigation tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} />
 
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        <div key={activeTab} className="tab-content">
+      <main className="max-w-6xl mx-auto px-4 py-6 safe-area-bottom">
+        <div
+          key={activeTab}
+          className="tab-content"
+          role="tabpanel"
+          id={`${activeTab}-panel`}
+          aria-labelledby={activeTab}
+        >
           {activeTab === 'live' && (
-            <div className="space-y-6">
+            <div className="space-y-6 stagger-children">
               {/* AI-Generated GW Summary */}
               <GWSummary
                 currentEvent={currentEvent}
@@ -120,7 +126,7 @@ export function Dashboard({
             <WhatIf squads={whatIfSquads} />
           )}
         </div>
-      </div>
+      </main>
     </div>
   )
 }

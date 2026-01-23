@@ -8,6 +8,101 @@ interface UpcomingFixturesProps {
   currentEvent: number
 }
 
+// Team filter dropdown
+function TeamFilter({
+  teams,
+  selectedTeamId,
+  onSelect,
+}: {
+  teams: { id: number; name: string }[]
+  selectedTeamId: number | null
+  onSelect: (id: number | null) => void
+}) {
+  return (
+    <div className="bg-[var(--card)] rounded-xl border border-[var(--card-border)] p-4 shadow-[var(--card-shadow)]">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <label
+          htmlFor="fixtures-team-filter"
+          className="text-sm font-medium text-[var(--muted)] shrink-0"
+        >
+          Filter by team
+        </label>
+        <select
+          id="fixtures-team-filter"
+          value={selectedTeamId ?? ''}
+          onChange={(e) => onSelect(e.target.value ? Number(e.target.value) : null)}
+          className="flex-1 sm:max-w-xs bg-[var(--background)] border border-[var(--card-border)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition-shadow"
+        >
+          <option value="">All Teams</option>
+          {teams.map((team) => (
+            <option key={team.id} value={team.id}>
+              {team.name}
+            </option>
+          ))}
+        </select>
+        {selectedTeamId && (
+          <button
+            onClick={() => onSelect(null)}
+            className="text-xs text-[var(--accent)] hover:underline"
+          >
+            Clear filter
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Empty state
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="bg-[var(--card)] rounded-xl border border-[var(--card-border)] p-8 text-center">
+      <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-[var(--card-border)] flex items-center justify-center">
+        <svg
+          className="w-6 h-6 text-[var(--muted)]"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+          />
+        </svg>
+      </div>
+      <p className="text-[var(--muted)] text-sm">{message}</p>
+    </div>
+  )
+}
+
+// Fixture card for upcoming matches
+function UpcomingFixtureCard({ match }: { match: FixtureWithNames }) {
+  return (
+    <div className="px-4 py-4 hover:bg-[var(--card-border)]/20 transition-colors">
+      <div className="flex items-center justify-between gap-3">
+        {/* Team 1 */}
+        <div className="flex-1 min-w-0 text-right">
+          <div className="font-semibold text-sm truncate">{match.team1Name}</div>
+          <div className="text-xs text-[var(--muted)] truncate">{match.team1PlayerName}</div>
+        </div>
+
+        {/* VS badge */}
+        <div className="flex items-center justify-center w-12 h-12 rounded-full bg-[var(--card-border)]/50 shrink-0">
+          <span className="text-sm font-bold text-[var(--muted)]">VS</span>
+        </div>
+
+        {/* Team 2 */}
+        <div className="flex-1 min-w-0 text-left">
+          <div className="font-semibold text-sm truncate">{match.team2Name}</div>
+          <div className="text-xs text-[var(--muted)] truncate">{match.team2PlayerName}</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function UpcomingFixtures({ matches, currentEvent }: UpcomingFixturesProps) {
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null)
 
@@ -26,7 +121,12 @@ export function UpcomingFixtures({ matches, currentEvent }: UpcomingFixturesProp
   // Get all unfinished matches (future fixtures), grouped by gameweek
   const upcomingMatches = matches
     .filter((m) => !m.finished && !m.started)
-    .filter((m) => selectedTeamId === null || m.team1Id === selectedTeamId || m.team2Id === selectedTeamId)
+    .filter(
+      (m) =>
+        selectedTeamId === null ||
+        m.team1Id === selectedTeamId ||
+        m.team2Id === selectedTeamId
+    )
     .sort((a, b) => a.event - b.event)
 
   // Group by gameweek
@@ -43,72 +143,53 @@ export function UpcomingFixtures({ matches, currentEvent }: UpcomingFixturesProp
     .sort((a, b) => a - b)
 
   if (matches.filter((m) => !m.finished && !m.started).length === 0) {
-    return (
-      <div className="bg-[var(--card)] rounded-lg border border-[var(--card-border)] p-4">
-        <p className="text-[var(--muted)] text-sm text-center">No upcoming fixtures</p>
-      </div>
-    )
+    return <EmptyState message="No upcoming fixtures" />
   }
 
   return (
     <div className="space-y-4">
-      {/* Team Filter */}
-      <div className="bg-[var(--card)] rounded-lg border border-[var(--card-border)] p-4">
-        <div className="flex items-center gap-3">
-          <label htmlFor="fixtures-team-filter" className="text-sm font-medium text-[var(--muted)]">
-            Filter by team:
-          </label>
-          <select
-            id="fixtures-team-filter"
-            value={selectedTeamId ?? ''}
-            onChange={(e) => setSelectedTeamId(e.target.value ? Number(e.target.value) : null)}
-            className="flex-1 max-w-xs bg-[var(--background)] border border-[var(--card-border)] rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-          >
-            <option value="">All Teams</option>
-            {teams.map((team) => (
-              <option key={team.id} value={team.id}>
-                {team.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+      <TeamFilter teams={teams} selectedTeamId={selectedTeamId} onSelect={setSelectedTeamId} />
 
       {gameweeks.length === 0 && selectedTeamId !== null && (
-        <div className="bg-[var(--card)] rounded-lg border border-[var(--card-border)] p-4">
-          <p className="text-[var(--muted)] text-sm text-center">No upcoming fixtures for this team</p>
-        </div>
+        <EmptyState message="No upcoming fixtures for this team" />
       )}
 
       {gameweeks.map((gw) => (
         <section
           key={gw}
-          className="bg-[var(--card)] rounded-lg border border-[var(--card-border)] overflow-hidden"
+          className="bg-[var(--card)] rounded-xl border border-[var(--card-border)] overflow-hidden shadow-[var(--card-shadow)]"
         >
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)] px-4 py-3 border-b border-[var(--card-border)]">
-            Gameweek {gw}
-          </h3>
+          <header className="flex items-center justify-between px-4 py-3 border-b border-[var(--card-border)] bg-[var(--card-elevated)]">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
+              Gameweek {gw}
+            </h3>
+            <span className="text-xs text-[var(--muted)]">
+              {matchesByGW[gw].length} {matchesByGW[gw].length === 1 ? 'match' : 'matches'}
+            </span>
+          </header>
           <div className="divide-y divide-[var(--card-border)]">
             {matchesByGW[gw].map((m, i) => (
-              <div key={i} className="px-4 py-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex-1 text-right">
-                    <div className="font-medium text-sm">{m.team1Name}</div>
-                    <div className="text-xs text-[var(--muted)]">{m.team1PlayerName}</div>
-                  </div>
-                  <div className="flex items-center gap-2 px-3">
-                    <span className="text-lg font-bold text-[var(--muted)]">vs</span>
-                  </div>
-                  <div className="flex-1 text-left">
-                    <div className="font-medium text-sm">{m.team2Name}</div>
-                    <div className="text-xs text-[var(--muted)]">{m.team2PlayerName}</div>
-                  </div>
-                </div>
-              </div>
+              <UpcomingFixtureCard key={i} match={m} />
             ))}
           </div>
         </section>
       ))}
+
+      {/* Summary footer */}
+      <div className="bg-[var(--card)] rounded-xl border border-[var(--card-border)] p-4 shadow-[var(--card-shadow)]">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-[var(--muted)]">Total upcoming matches</span>
+          <span className="font-semibold">{upcomingMatches.length}</span>
+        </div>
+        {selectedTeamId && (
+          <div className="flex items-center justify-between text-sm mt-2">
+            <span className="text-[var(--muted)]">
+              For {teams.find((t) => t.id === selectedTeamId)?.name}
+            </span>
+            <span className="font-semibold">{gameweeks.length} gameweeks</span>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -14,38 +14,224 @@ interface TeamOption {
   name: string
 }
 
+// Position badge component
+function PositionBadge({ position }: { position: string }) {
+  const positionClass = {
+    GK: 'pos-gk',
+    DEF: 'pos-def',
+    MID: 'pos-mid',
+    FWD: 'pos-fwd',
+  }[position] || ''
+
+  return <span className={`pos-badge ${positionClass}`}>{position}</span>
+}
+
 // Helper to render stat icons
 function StatIcons({ player }: { player: PlayerPoints }) {
-  const icons: string[] = []
+  const icons: React.ReactNode[] = []
 
-  // Goals (one ball per goal)
+  // Goals
   for (let i = 0; i < player.goals; i++) {
-    icons.push('⚽')
+    icons.push(
+      <span key={`goal-${i}`} title="Goal" className="stat-icon">
+        ⚽
+      </span>
+    )
   }
 
   // Assists
   for (let i = 0; i < player.assists; i++) {
-    icons.push('🅰️')
+    icons.push(
+      <span key={`assist-${i}`} title="Assist" className="stat-icon">
+        🅰️
+      </span>
+    )
   }
 
-  // Clean sheet (only for GK, DEF, MID)
+  // Clean sheet
   if (player.cleanSheet && ['GK', 'DEF', 'MID'].includes(player.positionName)) {
-    icons.push('🛡️')
+    icons.push(
+      <span key="cs" title="Clean sheet" className="stat-icon">
+        🛡️
+      </span>
+    )
   }
 
   // Yellow cards
   for (let i = 0; i < player.yellowCards; i++) {
-    icons.push('🟨')
+    icons.push(
+      <span key={`yellow-${i}`} title="Yellow card" className="stat-icon">
+        🟨
+      </span>
+    )
   }
 
   // Red cards
   for (let i = 0; i < player.redCards; i++) {
-    icons.push('🟥')
+    icons.push(
+      <span key={`red-${i}`} title="Red card" className="stat-icon">
+        🟥
+      </span>
+    )
   }
 
   if (icons.length === 0) return null
 
-  return <span className="ml-1">{icons.join('')}</span>
+  return <span className="inline-flex items-center gap-0.5 ml-1">{icons}</span>
+}
+
+// Team breakdown component for results
+function TeamBreakdownResult({
+  breakdown,
+  teamName,
+}: {
+  breakdown: TeamPointsBreakdown
+  teamName: string
+}) {
+  const starters = breakdown.players.filter((p) => !p.isBenched)
+  const bench = breakdown.players.filter((p) => p.isBenched)
+
+  return (
+    <div className="bg-[var(--background)] rounded-lg border border-[var(--card-border)] overflow-hidden">
+      <div className="px-3 py-2 border-b border-[var(--card-border)] bg-[var(--card)]">
+        <span className="text-xs font-semibold">{teamName}</span>
+      </div>
+      <div className="p-2 space-y-0.5">
+        {starters.map((p, idx) => (
+          <div
+            key={idx}
+            className="flex items-center justify-between text-xs gap-1.5 px-2 py-1 rounded-md"
+          >
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <PositionBadge position={p.positionName} />
+              <span className="truncate" title={p.name}>
+                {p.name}
+              </span>
+              <StatIcons player={p} />
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="hidden sm:inline text-[10px] text-[var(--muted)]">
+                {p.teamShortName} {p.isHome ? 'v' : '@'} {p.opponentShortName}
+              </span>
+              <span
+                className={`font-semibold min-w-[3ch] text-right tabular-nums ${
+                  p.points > 0
+                    ? 'text-[var(--success)]'
+                    : p.points < 0
+                    ? 'text-[var(--danger)]'
+                    : 'text-[var(--muted)]'
+                }`}
+              >
+                {p.points}
+              </span>
+              {p.bonus > 0 && (
+                <span className="text-[10px] font-medium text-[var(--accent)] bg-[var(--accent-muted)] px-1 py-0.5 rounded">
+                  +{p.bonus}
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
+
+        {bench.length > 0 && (
+          <>
+            <div className="flex items-center gap-2 mt-2 pt-2 border-t border-[var(--card-border)]">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--muted)]">
+                Bench
+              </span>
+            </div>
+            {bench.map((p, idx) => (
+              <div
+                key={idx}
+                className="flex items-center justify-between text-xs text-[var(--muted)] gap-1.5 px-2 py-0.5 opacity-60"
+              >
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <span className="text-[10px] w-6">{p.positionName}</span>
+                  <span className="truncate">{p.name}</span>
+                  <StatIcons player={p} />
+                </div>
+                <span className="shrink-0 tabular-nums">
+                  ({p.points})
+                  {p.bonus > 0 && (
+                    <span className="text-[var(--accent)]"> +{p.bonus}</span>
+                  )}
+                </span>
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Team filter dropdown
+function TeamFilter({
+  teams,
+  selectedTeamId,
+  onSelect,
+}: {
+  teams: TeamOption[]
+  selectedTeamId: number | null
+  onSelect: (id: number | null) => void
+}) {
+  return (
+    <div className="bg-[var(--card)] rounded-xl border border-[var(--card-border)] p-4 shadow-[var(--card-shadow)]">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <label
+          htmlFor="results-team-filter"
+          className="text-sm font-medium text-[var(--muted)] shrink-0"
+        >
+          Filter by team
+        </label>
+        <select
+          id="results-team-filter"
+          value={selectedTeamId ?? ''}
+          onChange={(e) => onSelect(e.target.value ? Number(e.target.value) : null)}
+          className="flex-1 sm:max-w-xs bg-[var(--background)] border border-[var(--card-border)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition-shadow"
+        >
+          <option value="">All Teams</option>
+          {teams.map((team) => (
+            <option key={team.id} value={team.id}>
+              {team.name}
+            </option>
+          ))}
+        </select>
+        {selectedTeamId && (
+          <button
+            onClick={() => onSelect(null)}
+            className="text-xs text-[var(--accent)] hover:underline"
+          >
+            Clear filter
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Empty state
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="bg-[var(--card)] rounded-xl border border-[var(--card-border)] p-8 text-center">
+      <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-[var(--card-border)] flex items-center justify-center">
+        <svg
+          className="w-6 h-6 text-[var(--muted)]"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+          />
+        </svg>
+      </div>
+      <p className="text-[var(--muted)] text-sm">{message}</p>
+    </div>
+  )
 }
 
 export function Results({ matches, currentEvent, allPointsBreakdown }: ResultsProps) {
@@ -67,7 +253,12 @@ export function Results({ matches, currentEvent, allPointsBreakdown }: ResultsPr
   // Get all finished matches, grouped by gameweek (most recent first)
   const finishedMatches = matches
     .filter((m) => m.finished)
-    .filter((m) => selectedTeamId === null || m.team1Id === selectedTeamId || m.team2Id === selectedTeamId)
+    .filter(
+      (m) =>
+        selectedTeamId === null ||
+        m.team1Id === selectedTeamId ||
+        m.team2Id === selectedTeamId
+    )
     .sort((a, b) => b.event - a.event)
 
   // Group by gameweek
@@ -84,41 +275,15 @@ export function Results({ matches, currentEvent, allPointsBreakdown }: ResultsPr
     .sort((a, b) => b - a)
 
   if (matches.filter((m) => m.finished).length === 0) {
-    return (
-      <div className="bg-[var(--card)] rounded-lg border border-[var(--card-border)] p-4">
-        <p className="text-[var(--muted)] text-sm text-center">No results yet</p>
-      </div>
-    )
+    return <EmptyState message="No results yet" />
   }
 
   return (
     <div className="space-y-4">
-      {/* Team Filter */}
-      <div className="bg-[var(--card)] rounded-lg border border-[var(--card-border)] p-4">
-        <div className="flex items-center gap-3">
-          <label htmlFor="team-filter" className="text-sm font-medium text-[var(--muted)]">
-            Filter by team:
-          </label>
-          <select
-            id="team-filter"
-            value={selectedTeamId ?? ''}
-            onChange={(e) => setSelectedTeamId(e.target.value ? Number(e.target.value) : null)}
-            className="flex-1 max-w-xs bg-[var(--background)] border border-[var(--card-border)] rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-          >
-            <option value="">All Teams</option>
-            {teams.map((team) => (
-              <option key={team.id} value={team.id}>
-                {team.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+      <TeamFilter teams={teams} selectedTeamId={selectedTeamId} onSelect={setSelectedTeamId} />
 
       {gameweeks.length === 0 && selectedTeamId !== null && (
-        <div className="bg-[var(--card)] rounded-lg border border-[var(--card-border)] p-4">
-          <p className="text-[var(--muted)] text-sm text-center">No results for this team</p>
-        </div>
+        <EmptyState message="No results for this team" />
       )}
 
       {gameweeks.map((gw) => {
@@ -127,11 +292,13 @@ export function Results({ matches, currentEvent, allPointsBreakdown }: ResultsPr
         return (
           <section
             key={gw}
-            className="bg-[var(--card)] rounded-lg border border-[var(--card-border)] overflow-hidden"
+            className="bg-[var(--card)] rounded-xl border border-[var(--card-border)] overflow-hidden shadow-[var(--card-shadow)]"
           >
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)] px-4 py-3 border-b border-[var(--card-border)]">
-              Gameweek {gw}
-            </h3>
+            <header className="px-4 py-3 border-b border-[var(--card-border)] bg-[var(--card-elevated)]">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
+                Gameweek {gw}
+              </h3>
+            </header>
             <div className="divide-y divide-[var(--card-border)]">
               {matchesByGW[gw].map((m, i) => {
                 const matchKey = `${gw}-${i}`
@@ -140,188 +307,87 @@ export function Results({ matches, currentEvent, allPointsBreakdown }: ResultsPr
                 const team2Breakdown = gwBreakdown[m.team2Id]
                 const hasBreakdown = team1Breakdown && team2Breakdown
 
+                const team1Won = m.team1Points > m.team2Points
+                const team2Won = m.team2Points > m.team1Points
+
                 return (
                   <div key={i}>
                     <button
                       onClick={() => setExpandedMatch(isExpanded ? null : matchKey)}
-                      className="w-full px-4 py-3 hover:bg-[var(--card-border)]/30 transition-colors"
+                      className="w-full px-4 py-3 hover:bg-[var(--card-border)]/20 transition-colors touch-target"
                       disabled={!hasBreakdown}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex-1 text-right">
+                        <div className="flex-1 text-right min-w-0">
                           <div
-                            className={`font-medium text-sm ${
-                              m.team1Points > m.team2Points ? 'text-[var(--success)]' : ''
+                            className={`font-medium text-sm truncate ${
+                              team1Won ? 'text-[var(--success)]' : ''
                             }`}
                           >
                             {m.team1Name}
                           </div>
-                          <div className="text-xs text-[var(--muted)]">{m.team1PlayerName}</div>
+                          <div className="text-xs text-[var(--muted)] truncate">
+                            {m.team1PlayerName}
+                          </div>
                         </div>
                         <div className="flex items-center gap-2 px-3">
                           <span
-                            className={`text-lg font-bold min-w-[2ch] text-right ${
-                              m.team1Points > m.team2Points ? 'text-[var(--success)]' : ''
+                            className={`text-lg font-bold min-w-[2ch] text-right tabular-nums ${
+                              team1Won ? 'text-[var(--success)]' : ''
                             }`}
                           >
                             {m.team1Points}
                           </span>
                           <span className="text-[var(--muted)]">:</span>
                           <span
-                            className={`text-lg font-bold min-w-[2ch] text-left ${
-                              m.team2Points > m.team1Points ? 'text-[var(--success)]' : ''
+                            className={`text-lg font-bold min-w-[2ch] text-left tabular-nums ${
+                              team2Won ? 'text-[var(--success)]' : ''
                             }`}
                           >
                             {m.team2Points}
                           </span>
                         </div>
-                        <div className="flex-1 text-left">
+                        <div className="flex-1 text-left min-w-0">
                           <div
-                            className={`font-medium text-sm ${
-                              m.team2Points > m.team1Points ? 'text-[var(--success)]' : ''
+                            className={`font-medium text-sm truncate ${
+                              team2Won ? 'text-[var(--success)]' : ''
                             }`}
                           >
                             {m.team2Name}
                           </div>
-                          <div className="text-xs text-[var(--muted)]">{m.team2PlayerName}</div>
+                          <div className="text-xs text-[var(--muted)] truncate">
+                            {m.team2PlayerName}
+                          </div>
                         </div>
                       </div>
                       {hasBreakdown && (
-                        <div className="text-center mt-2">
+                        <div className="flex items-center justify-center gap-1 mt-2">
+                          <svg
+                            className={`w-4 h-4 text-[var(--muted)] transition-transform ${
+                              isExpanded ? 'rotate-180' : ''
+                            }`}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
                           <span className="text-xs text-[var(--muted)]">
-                            {isExpanded ? '▲ Hide breakdown' : '▼ Show breakdown'}
+                            {isExpanded ? 'Hide' : 'Show'} breakdown
                           </span>
                         </div>
                       )}
                     </button>
 
                     {isExpanded && hasBreakdown && (
-                      <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {/* Team 1 Breakdown */}
-                        <div className="bg-[var(--background)] rounded-lg p-3">
-                          <div className="text-xs font-semibold text-[var(--muted)] mb-2 text-center">
-                            {m.team1Name}
-                          </div>
-                          <div className="space-y-1.5">
-                            {team1Breakdown.players
-                              .filter((p) => !p.isBenched)
-                              .map((p, idx) => (
-                                <div key={idx} className="flex items-center justify-between text-xs gap-1">
-                                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                    <span className="text-[var(--muted)] w-7 shrink-0">{p.positionName}</span>
-                                    <span className="truncate">{p.name}</span>
-                                    <StatIcons player={p} />
-                                  </div>
-                                  <div className="flex items-center gap-1.5 shrink-0">
-                                    <span className="text-[var(--muted)]">
-                                      {p.teamShortName} {p.isHome ? 'v' : '@'} {p.opponentShortName}
-                                    </span>
-                                    <span
-                                      className={`font-medium text-right ${
-                                        p.points > 0
-                                          ? 'text-[var(--success)]'
-                                          : p.points < 0
-                                          ? 'text-[var(--danger)]'
-                                          : 'text-[var(--muted)]'
-                                      }`}
-                                    >
-                                      {p.points}
-                                      {p.bonus > 0 && (
-                                        <span className="text-[var(--accent)]"> ({p.bonus})</span>
-                                      )}
-                                    </span>
-                                  </div>
-                                </div>
-                              ))}
-                            {team1Breakdown.players.some((p) => p.isBenched) && (
-                              <>
-                                <div className="text-xs text-[var(--muted)] mt-2 pt-2 border-t border-[var(--card-border)]">
-                                  Bench
-                                </div>
-                                {team1Breakdown.players
-                                  .filter((p) => p.isBenched)
-                                  .map((p, idx) => (
-                                    <div key={idx} className="flex items-center justify-between text-xs text-[var(--muted)] gap-1">
-                                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                        <span className="w-7 shrink-0">{p.positionName}</span>
-                                        <span className="truncate">{p.name}</span>
-                                        <StatIcons player={p} />
-                                      </div>
-                                      <span className="shrink-0">
-                                        ({p.points})
-                                        {p.bonus > 0 && (
-                                          <span className="text-[var(--accent)]"> ({p.bonus})</span>
-                                        )}
-                                      </span>
-                                    </div>
-                                  ))}
-                              </>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Team 2 Breakdown */}
-                        <div className="bg-[var(--background)] rounded-lg p-3">
-                          <div className="text-xs font-semibold text-[var(--muted)] mb-2 text-center">
-                            {m.team2Name}
-                          </div>
-                          <div className="space-y-1.5">
-                            {team2Breakdown.players
-                              .filter((p) => !p.isBenched)
-                              .map((p, idx) => (
-                                <div key={idx} className="flex items-center justify-between text-xs gap-1">
-                                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                    <span className="text-[var(--muted)] w-7 shrink-0">{p.positionName}</span>
-                                    <span className="truncate">{p.name}</span>
-                                    <StatIcons player={p} />
-                                  </div>
-                                  <div className="flex items-center gap-1.5 shrink-0">
-                                    <span className="text-[var(--muted)]">
-                                      {p.teamShortName} {p.isHome ? 'v' : '@'} {p.opponentShortName}
-                                    </span>
-                                    <span
-                                      className={`font-medium text-right ${
-                                        p.points > 0
-                                          ? 'text-[var(--success)]'
-                                          : p.points < 0
-                                          ? 'text-[var(--danger)]'
-                                          : 'text-[var(--muted)]'
-                                      }`}
-                                    >
-                                      {p.points}
-                                      {p.bonus > 0 && (
-                                        <span className="text-[var(--accent)]"> ({p.bonus})</span>
-                                      )}
-                                    </span>
-                                  </div>
-                                </div>
-                              ))}
-                            {team2Breakdown.players.some((p) => p.isBenched) && (
-                              <>
-                                <div className="text-xs text-[var(--muted)] mt-2 pt-2 border-t border-[var(--card-border)]">
-                                  Bench
-                                </div>
-                                {team2Breakdown.players
-                                  .filter((p) => p.isBenched)
-                                  .map((p, idx) => (
-                                    <div key={idx} className="flex items-center justify-between text-xs text-[var(--muted)] gap-1">
-                                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                        <span className="w-7 shrink-0">{p.positionName}</span>
-                                        <span className="truncate">{p.name}</span>
-                                        <StatIcons player={p} />
-                                      </div>
-                                      <span className="shrink-0">
-                                        ({p.points})
-                                        {p.bonus > 0 && (
-                                          <span className="text-[var(--accent)]"> ({p.bonus})</span>
-                                        )}
-                                      </span>
-                                    </div>
-                                  ))}
-                              </>
-                            )}
-                          </div>
-                        </div>
+                      <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-fade-in">
+                        <TeamBreakdownResult breakdown={team1Breakdown} teamName={m.team1Name} />
+                        <TeamBreakdownResult breakdown={team2Breakdown} teamName={m.team2Name} />
                       </div>
                     )}
                   </div>

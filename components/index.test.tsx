@@ -11,6 +11,11 @@ afterEach(() => {
   cleanup()
 })
 
+// Mock scrollIntoView which is not available in jsdom
+beforeEach(() => {
+  Element.prototype.scrollIntoView = vi.fn()
+})
+
 // Import all components
 import { Header } from './Header'
 import { TabNavigation } from './TabNavigation'
@@ -33,7 +38,8 @@ describe('Header', () => {
 
   it('renders league name and gameweek', () => {
     render(<Header leagueName="Hogwarts League" currentEvent={21} deadlineInfo={deadlineInfo} />)
-    expect(screen.getByText('Hogwarts League')).toBeInTheDocument()
+    // Mobile and desktop layouts both render the league name
+    expect(screen.getAllByText('Hogwarts League').length).toBeGreaterThan(0)
     expect(screen.getByText('Gameweek 21')).toBeInTheDocument()
   })
 
@@ -82,12 +88,15 @@ describe('Standings', () => {
   it('renders standings table with team data', () => {
     render(<Standings managers={[mockManager]} form={{}} />)
     expect(screen.getByText('Standings')).toBeInTheDocument()
-    expect(screen.getByText('Test Team')).toBeInTheDocument()
+    // Mobile and desktop layouts both render the team name
+    expect(screen.getAllByText('Test Team').length).toBeGreaterThan(0)
   })
 
   it('shows form indicators when provided', () => {
-    const { container } = render(<Standings managers={[mockManager]} form={{ 1: ['W', 'L'] }} />)
-    expect(container.textContent).toMatch(/🟢|🔴/)
+    render(<Standings managers={[mockManager]} form={{ 1: ['W', 'L'] }} />)
+    // New design uses form-dot CSS classes with aria-labels (mobile + desktop views)
+    expect(screen.getAllByLabelText('Win').length).toBeGreaterThan(0)
+    expect(screen.getAllByLabelText('Loss').length).toBeGreaterThan(0)
   })
 })
 
@@ -114,7 +123,8 @@ describe('SummerStandings', () => {
   it('renders standings when matches played', () => {
     render(<SummerStandings standings={[createStanding(1, 'Active Team', 2)]} />)
     expect(screen.getAllByText('Summer Championship').length).toBeGreaterThan(0)
-    expect(screen.getByText('Active Team')).toBeInTheDocument()
+    // Mobile and desktop layouts both render the team name
+    expect(screen.getAllByText('Active Team').length).toBeGreaterThan(0)
   })
 })
 
@@ -125,10 +135,17 @@ describe('HeadToHead', () => {
     { id: 2, entry_id: 200, entry_name: 'Team B', player_first_name: 'B', player_last_name: 'B', short_name: 'TB', waiver_pick: 2 },
   ]
 
+  // H2H data with at least one match played to show the matrix
+  const h2hWithMatches = {
+    1: { 2: { wins: 1, draws: 0, losses: 0, pointsFor: 50, pointsAgainst: 40 } },
+    2: { 1: { wins: 0, draws: 0, losses: 1, pointsFor: 40, pointsAgainst: 50 } },
+  }
+
   it('renders H2H matrix', () => {
-    render(<HeadToHead entries={entries} h2h={{}} />)
+    render(<HeadToHead entries={entries} h2h={h2hWithMatches} />)
     expect(screen.getByText('Head to Head')).toBeInTheDocument()
-    expect(screen.getAllByText('TA').length).toBe(2) // header and row
+    // Desktop and mobile views both render the short names
+    expect(screen.getAllByText('TA').length).toBeGreaterThanOrEqual(2)
   })
 })
 
@@ -136,7 +153,7 @@ describe('HeadToHead', () => {
 describe('Transactions', () => {
   it('shows empty state when no transactions', () => {
     render(<Transactions transactions={[]} currentEvent={21} />)
-    expect(screen.getByText('No transactions this gameweek')).toBeInTheDocument()
+    expect(screen.getByText('No transactions')).toBeInTheDocument()
   })
 
   it('renders transactions list', () => {
@@ -308,9 +325,10 @@ describe('WhatIf', () => {
   })
 
   it('renders squad rankings', () => {
-    render(<WhatIf squads={[squad]} />)
+    const { container } = render(<WhatIf squads={[squad]} />)
     expect(screen.getByText('Draft Team')).toBeInTheDocument()
-    expect(screen.getByText('500')).toBeInTheDocument()
+    // 500 appears multiple times in the new design (stats summary + squad card)
+    expect(container.textContent).toContain('500')
   })
 
   it('expands to show players when clicked', () => {
