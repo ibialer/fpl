@@ -28,15 +28,6 @@ function StatIcons({ player }: { player: PlayerPoints }) {
     icons.push('🛡️')
   }
 
-  // Defensive contribution (only for DEF and MID, show count)
-  if (player.defensiveContribution > 0 && ['DEF', 'MID'].includes(player.positionName)) {
-    icons.push(
-      <span key="dc" className="text-[var(--muted)] text-[10px]" title="Defensive contributions">
-        DC:{player.defensiveContribution}
-      </span>
-    )
-  }
-
   // Yellow cards
   for (let i = 0; i < player.yellowCards; i++) {
     icons.push('🟨')
@@ -45,6 +36,15 @@ function StatIcons({ player }: { player: PlayerPoints }) {
   // Red cards
   for (let i = 0; i < player.redCards; i++) {
     icons.push('🟥')
+  }
+
+  // Defensive contribution (only for DEF and MID, show count) - appears last with space
+  if (player.defensiveContribution > 0 && ['DEF', 'MID'].includes(player.positionName)) {
+    icons.push(
+      <span key="dc" className="text-[var(--muted)] text-[10px]" title="Defensive contributions">
+        {' '}DC:{player.defensiveContribution}
+      </span>
+    )
   }
 
   if (icons.length === 0) return null
