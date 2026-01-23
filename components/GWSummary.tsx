@@ -57,15 +57,17 @@ export function GWSummary({ currentEvent, fixtures, pointsBreakdown }: GWSummary
       </div>
       <div className="px-4 py-3">
         {loading && (
-          <div className="flex items-center gap-2 text-[var(--muted)]">
-            <div className="animate-pulse">Generating summary...</div>
+          <div className="space-y-2">
+            <div className="skeleton h-4 w-full" />
+            <div className="skeleton h-4 w-11/12" />
+            <div className="skeleton h-4 w-4/5" />
           </div>
         )}
         {error && (
           <div className="text-[var(--danger)] text-sm">{error}</div>
         )}
         {!loading && !error && summary && (
-          <p className="text-sm leading-relaxed">{summary}</p>
+          <p className="text-sm leading-relaxed tab-content">{summary}</p>
         )}
       </div>
     </section>

@@ -77,47 +77,49 @@ export function Dashboard({
       <TabNavigation tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} />
 
       <div className="max-w-6xl mx-auto px-4 py-6">
-        {activeTab === 'live' && (
-          <div className="space-y-6">
-            {/* AI-Generated GW Summary */}
-            <GWSummary
-              currentEvent={currentEvent}
-              fixtures={currentFixtures}
-              pointsBreakdown={pointsBreakdown}
-            />
+        <div key={activeTab} className="tab-content">
+          {activeTab === 'live' && (
+            <div className="space-y-6">
+              {/* AI-Generated GW Summary */}
+              <GWSummary
+                currentEvent={currentEvent}
+                fixtures={currentFixtures}
+                pointsBreakdown={pointsBreakdown}
+              />
 
-            {/* Current Gameweek Fixtures */}
-            <Fixtures
-              fixtures={currentFixtures}
-              currentEvent={currentEvent}
-              pointsBreakdown={pointsBreakdown}
-            />
+              {/* Current Gameweek Fixtures */}
+              <Fixtures
+                fixtures={currentFixtures}
+                currentEvent={currentEvent}
+                pointsBreakdown={pointsBreakdown}
+              />
 
-            {/* Standings tables - side by side on larger screens */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Standings managers={managers} form={form} />
-              <SummerStandings standings={summerStandings} />
+              {/* Standings tables - side by side on larger screens */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Standings managers={managers} form={form} />
+                <SummerStandings standings={summerStandings} />
+              </div>
+
+              {/* Head to Head matrix */}
+              <HeadToHead entries={entries} h2h={h2h} />
+
+              {/* Transactions */}
+              <Transactions transactions={transactions} currentEvent={transactionsEvent} />
             </div>
+          )}
 
-            {/* Head to Head matrix */}
-            <HeadToHead entries={entries} h2h={h2h} />
+          {activeTab === 'results' && (
+            <Results matches={allMatches} currentEvent={currentEvent} allPointsBreakdown={allPointsBreakdown} />
+          )}
 
-            {/* Transactions */}
-            <Transactions transactions={transactions} currentEvent={transactionsEvent} />
-          </div>
-        )}
+          {activeTab === 'fixtures' && (
+            <UpcomingFixtures matches={allMatches} currentEvent={currentEvent} />
+          )}
 
-        {activeTab === 'results' && (
-          <Results matches={allMatches} currentEvent={currentEvent} allPointsBreakdown={allPointsBreakdown} />
-        )}
-
-        {activeTab === 'fixtures' && (
-          <UpcomingFixtures matches={allMatches} currentEvent={currentEvent} />
-        )}
-
-        {activeTab === 'whatif' && (
-          <WhatIf squads={whatIfSquads} />
-        )}
+          {activeTab === 'whatif' && (
+            <WhatIf squads={whatIfSquads} />
+          )}
+        </div>
       </div>
     </div>
   )
