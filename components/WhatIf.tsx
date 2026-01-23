@@ -19,13 +19,14 @@ function PositionBadge({ position }: { position: string }) {
   return <span className={`pos-badge ${positionClass}`}>{position}</span>
 }
 
-// Rank badge with medal styling
+// Rank badge with medal styling - larger variant for card-based layout
 function RankBadge({ rank }: { rank: number }) {
   if (rank <= 3) {
+    // Use same color scheme as Standings/SummerStandings for visual consistency
     const medalColors = {
-      1: 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-black',
-      2: 'bg-gradient-to-br from-slate-300 to-slate-500 text-black',
-      3: 'bg-gradient-to-br from-amber-500 to-amber-700 text-black',
+      1: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30',
+      2: 'bg-slate-400/20 text-slate-300 border-slate-400/30',
+      3: 'bg-amber-700/20 text-amber-600 border-amber-700/30',
     }[rank]
 
     const medalIcon = {
@@ -36,7 +37,7 @@ function RankBadge({ rank }: { rank: number }) {
 
     return (
       <div
-        className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-lg ${medalColors}`}
+        className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border ${medalColors}`}
       >
         {medalIcon}
       </div>

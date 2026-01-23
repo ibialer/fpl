@@ -27,8 +27,22 @@ function PositionBadge({ position }: { position: string }) {
 }
 
 // Helper to render stat icons
-function StatIcons({ player }: { player: PlayerPoints }) {
+function StatIcons({ player, isTopScorer }: { player: PlayerPoints; isTopScorer?: boolean }) {
   const icons: React.ReactNode[] = []
+
+  // Star for top scorer
+  if (isTopScorer && player.points > 0) {
+    icons.push(
+      <span
+        key="star"
+        className="text-[var(--warning)] drop-shadow-[0_0_3px_var(--warning)]"
+        title="Top scorer this match"
+        aria-label="Top scorer"
+      >
+        ★
+      </span>
+    )
+  }
 
   // Goals
   for (let i = 0; i < player.goals; i++) {
@@ -91,47 +105,59 @@ function TeamBreakdownResult({
   const starters = breakdown.players.filter((p) => !p.isBenched)
   const bench = breakdown.players.filter((p) => p.isBenched)
 
+  // Find top scorer among starters
+  const topScorer = starters.reduce(
+    (max, p) => (p.points > max.points ? p : max),
+    starters[0]
+  )
+
   return (
     <div className="bg-[var(--background)] rounded-lg border border-[var(--card-border)] overflow-hidden">
       <div className="px-3 py-2 border-b border-[var(--card-border)] bg-[var(--card)]">
         <span className="text-xs font-semibold">{teamName}</span>
       </div>
       <div className="p-2 space-y-0.5">
-        {starters.map((p, idx) => (
-          <div
-            key={idx}
-            className="flex items-center justify-between text-xs gap-1.5 px-2 py-1 rounded-md"
-          >
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              <PositionBadge position={p.positionName} />
-              <span className="truncate" title={p.name}>
-                {p.name}
-              </span>
-              <StatIcons player={p} />
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="hidden sm:inline text-[10px] text-[var(--muted)]">
-                {p.teamShortName} {p.isHome ? 'v' : '@'} {p.opponentShortName}
-              </span>
-              <span
-                className={`font-semibold min-w-[3ch] text-right tabular-nums ${
-                  p.points > 0
-                    ? 'text-[var(--success)]'
-                    : p.points < 0
-                    ? 'text-[var(--danger)]'
-                    : 'text-[var(--muted)]'
-                }`}
-              >
-                {p.points}
-              </span>
-              {p.bonus > 0 && (
-                <span className="text-[10px] font-medium text-[var(--accent)] bg-[var(--accent-muted)] px-1 py-0.5 rounded">
-                  +{p.bonus}
+        {starters.map((p, idx) => {
+          const isTop = p === topScorer && p.points > 0
+
+          return (
+            <div
+              key={idx}
+              className={`flex items-center justify-between text-xs gap-1.5 px-2 py-1.5 rounded-md transition-colors ${
+                isTop ? 'bg-[var(--warning-muted)] border border-[var(--warning)]/20' : ''
+              }`}
+            >
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <PositionBadge position={p.positionName} />
+                <span className="truncate" title={p.name}>
+                  {p.name}
                 </span>
-              )}
+                <StatIcons player={p} isTopScorer={isTop} />
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="hidden sm:inline text-[10px] text-[var(--muted)]">
+                  {p.teamShortName} {p.isHome ? 'v' : '@'} {p.opponentShortName}
+                </span>
+                <span
+                  className={`font-semibold min-w-[3ch] text-right tabular-nums ${
+                    p.points > 0
+                      ? 'text-[var(--success)]'
+                      : p.points < 0
+                      ? 'text-[var(--danger)]'
+                      : 'text-[var(--muted)]'
+                  }`}
+                >
+                  {p.points}
+                </span>
+                {p.bonus > 0 && (
+                  <span className="text-[10px] font-medium text-[var(--accent)] bg-[var(--accent-muted)] px-1 py-0.5 rounded">
+                    +{p.bonus}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
 
         {bench.length > 0 && (
           <>

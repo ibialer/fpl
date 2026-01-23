@@ -17,15 +17,15 @@ interface TabNavigationProps {
 export function TabNavigation({ tabs, activeTab, onTabChange }: TabNavigationProps) {
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 })
-  const containerRef = useRef<HTMLDivElement>(null)
+  const innerContainerRef = useRef<HTMLDivElement>(null)
 
   // Update indicator position when active tab changes
   useEffect(() => {
     const activeIndex = tabs.findIndex((tab) => tab.id === activeTab)
     const activeTabElement = tabRefs.current[activeIndex]
 
-    if (activeTabElement && containerRef.current) {
-      const containerRect = containerRef.current.getBoundingClientRect()
+    if (activeTabElement && innerContainerRef.current) {
+      const containerRect = innerContainerRef.current.getBoundingClientRect()
       const tabRect = activeTabElement.getBoundingClientRect()
 
       setIndicatorStyle({
@@ -51,12 +51,11 @@ export function TabNavigation({ tabs, activeTab, onTabChange }: TabNavigationPro
 
   return (
     <nav
-      ref={containerRef}
       className="sticky top-[73px] sm:top-[85px] z-[var(--z-sticky)] glass border-b border-[var(--card-border)]"
       role="tablist"
       aria-label="Dashboard navigation"
     >
-      <div className="max-w-6xl mx-auto relative">
+      <div ref={innerContainerRef} className="max-w-6xl mx-auto relative">
         {/* Tab buttons */}
         <div className="flex overflow-x-auto scrollbar-hide">
           {tabs.map((tab, index) => {
