@@ -96,6 +96,7 @@ export interface Events {
 
 export interface Player {
   id: number
+  code: number
   first_name: string
   second_name: string
   web_name: string
@@ -184,8 +185,10 @@ export interface TransactionWithDetails {
   managerName: string
   playerIn: string
   playerInTeam: string
+  playerInPhoto: string | null
   playerOut: string
   playerOutTeam: string
+  playerOutPhoto: string | null
   type: 'waiver' | 'free'
   date: string
 }

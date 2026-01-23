@@ -35,34 +35,85 @@ function TransactionTypeBadge({ type }: { type: 'waiver' | 'free' }) {
   )
 }
 
+// Player photo component with fallback
+function PlayerPhoto({
+  src,
+  alt,
+  type,
+}: {
+  src: string | null
+  alt: string
+  type: 'in' | 'out'
+}) {
+  const bgColor = type === 'in' ? 'bg-[var(--success-muted)]' : 'bg-[var(--danger-muted)]'
+  const borderColor = type === 'in' ? 'border-[var(--success)]/30' : 'border-[var(--danger)]/30'
+  const iconColor = type === 'in' ? 'text-[var(--success)]' : 'text-[var(--danger)]'
+
+  if (src) {
+    return (
+      <div className={`relative w-10 h-10 rounded-full overflow-hidden border-2 ${borderColor} shrink-0`}>
+        <img
+          src={src}
+          alt={alt}
+          className="w-full h-full object-cover object-top"
+          loading="lazy"
+        />
+        {/* Small indicator badge */}
+        <div
+          className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full ${bgColor} flex items-center justify-center border border-[var(--card)]`}
+        >
+          {type === 'in' ? (
+            <svg className={`w-2.5 h-2.5 ${iconColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+          ) : (
+            <svg className={`w-2.5 h-2.5 ${iconColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" />
+            </svg>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Fallback when no photo
+  return (
+    <div className={`w-10 h-10 rounded-full ${bgColor} flex items-center justify-center shrink-0`}>
+      {type === 'in' ? (
+        <svg className={`w-5 h-5 ${iconColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+      ) : (
+        <svg className={`w-5 h-5 ${iconColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" />
+        </svg>
+      )}
+    </div>
+  )
+}
+
 // Player transfer visualization
 function PlayerTransfer({
   playerIn,
   playerInTeam,
+  playerInPhoto,
   playerOut,
   playerOutTeam,
+  playerOutPhoto,
 }: {
   playerIn: string
   playerInTeam?: string
+  playerInPhoto?: string | null
   playerOut: string
   playerOutTeam?: string
+  playerOutPhoto?: string | null
 }) {
   return (
     <div className="flex items-center gap-3 text-sm">
       {/* Player Out */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-[var(--danger-muted)] flex items-center justify-center shrink-0">
-            <svg
-              className="w-3 h-3 text-[var(--danger)]"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" />
-            </svg>
-          </div>
+          <PlayerPhoto src={playerOutPhoto || null} alt={playerOut} type="out" />
           <div className="min-w-0">
             <div className="font-medium text-[var(--danger)] truncate">{playerOut}</div>
             {playerOutTeam && (
@@ -88,17 +139,7 @@ function PlayerTransfer({
       {/* Player In */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-[var(--success-muted)] flex items-center justify-center shrink-0">
-            <svg
-              className="w-3 h-3 text-[var(--success)]"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-          </div>
+          <PlayerPhoto src={playerInPhoto || null} alt={playerIn} type="in" />
           <div className="min-w-0">
             <div className="font-medium text-[var(--success)] truncate">{playerIn}</div>
             {playerInTeam && (
@@ -132,8 +173,10 @@ function TransactionCard({ transaction }: { transaction: TransactionWithDetails 
       <PlayerTransfer
         playerIn={transaction.playerIn}
         playerInTeam={transaction.playerInTeam}
+        playerInPhoto={transaction.playerInPhoto}
         playerOut={transaction.playerOut}
         playerOutTeam={transaction.playerOutTeam}
+        playerOutPhoto={transaction.playerOutPhoto}
       />
     </div>
   )
