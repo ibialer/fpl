@@ -135,7 +135,7 @@ export function SummerStandings({ standings }: SummerStandingsProps) {
   const hasStarted = sorted.some((s) => s.wins + s.draws + s.losses > 0)
 
   return (
-    <section className="bg-[var(--card)] rounded-xl border border-[var(--card-border)] overflow-hidden shadow-[var(--card-shadow)]">
+    <section className="bg-[var(--card)] rounded-xl border border-[var(--card-border)] overflow-hidden shadow-[var(--card-shadow)] flex flex-col h-full">
       <header className="px-4 py-3 border-b border-[var(--card-border)] bg-gradient-to-r from-[var(--warning-muted)] to-[var(--card-elevated)]">
         <div className="flex items-center gap-2">
           <svg
@@ -160,12 +160,14 @@ export function SummerStandings({ standings }: SummerStandingsProps) {
         </div>
       </header>
 
-      {!hasStarted ? (
-        <EmptyState />
-      ) : (
-        <>
-          {/* Mobile view */}
-          <div className="sm:hidden">
+      {/* Content area - grows to fill space */}
+      <div className="flex-1">
+        {!hasStarted ? (
+          <EmptyState />
+        ) : (
+          <>
+            {/* Mobile view */}
+            <div className="sm:hidden">
             {sorted.map((s, i) => (
               <MobileSummerCard key={s.entry.id} standing={s} rank={i + 1} isLeader={i === 0} />
             ))}
@@ -238,19 +240,20 @@ export function SummerStandings({ standings }: SummerStandingsProps) {
                 })}
               </tbody>
             </table>
-          </div>
-
-          {/* Legend */}
-          <footer className="px-4 py-2 border-t border-[var(--card-border)] bg-[var(--card-elevated)]">
-            <div className="flex items-center gap-4 text-[10px] text-[var(--muted)]">
-              <span>PF = Points For</span>
-              <span>PA = Points Against</span>
-              <span>+/- = Points Difference</span>
-              <span>Pts = League Points</span>
             </div>
-          </footer>
-        </>
-      )}
+          </>
+        )}
+      </div>
+
+      {/* Legend - always visible */}
+      <footer className="px-4 py-2 border-t border-[var(--card-border)] bg-[var(--card-elevated)] mt-auto">
+        <div className="flex items-center gap-4 text-[10px] text-[var(--muted)]">
+          <span>PF = Points For</span>
+          <span>PA = Points Against</span>
+          <span>+/- = Points Difference</span>
+          <span>Pts = League Points</span>
+        </div>
+      </footer>
     </section>
   )
 }

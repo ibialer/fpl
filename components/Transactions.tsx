@@ -1,3 +1,6 @@
+'use client'
+
+import { useState } from 'react'
 import { TransactionWithDetails } from '@/lib/types'
 
 interface TransactionsProps {
@@ -45,39 +48,13 @@ function PlayerPhoto({
   alt: string
   type: 'in' | 'out'
 }) {
+  const [hasError, setHasError] = useState(false)
   const bgColor = type === 'in' ? 'bg-[var(--success-muted)]' : 'bg-[var(--danger-muted)]'
   const borderColor = type === 'in' ? 'border-[var(--success)]/30' : 'border-[var(--danger)]/30'
   const iconColor = type === 'in' ? 'text-[var(--success)]' : 'text-[var(--danger)]'
 
-  if (src) {
-    return (
-      <div className={`relative w-10 h-10 rounded-full overflow-hidden border-2 ${borderColor} shrink-0`}>
-        <img
-          src={src}
-          alt={alt}
-          className="w-full h-full object-cover object-top"
-          loading="lazy"
-        />
-        {/* Small indicator badge */}
-        <div
-          className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full ${bgColor} flex items-center justify-center border border-[var(--card)]`}
-        >
-          {type === 'in' ? (
-            <svg className={`w-2.5 h-2.5 ${iconColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-          ) : (
-            <svg className={`w-2.5 h-2.5 ${iconColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" />
-            </svg>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  // Fallback when no photo
-  return (
+  // Fallback icon component
+  const FallbackIcon = () => (
     <div className={`w-10 h-10 rounded-full ${bgColor} flex items-center justify-center shrink-0`}>
       {type === 'in' ? (
         <svg className={`w-5 h-5 ${iconColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -88,6 +65,36 @@ function PlayerPhoto({
           <path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" />
         </svg>
       )}
+    </div>
+  )
+
+  if (!src || hasError) {
+    return <FallbackIcon />
+  }
+
+  return (
+    <div className={`relative w-10 h-10 rounded-full overflow-hidden border-2 ${borderColor} shrink-0`}>
+      <img
+        src={src}
+        alt={alt}
+        className="w-full h-full object-cover object-top"
+        loading="lazy"
+        onError={() => setHasError(true)}
+      />
+      {/* Small indicator badge */}
+      <div
+        className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full ${bgColor} flex items-center justify-center border border-[var(--card)]`}
+      >
+        {type === 'in' ? (
+          <svg className={`w-2.5 h-2.5 ${iconColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+        ) : (
+          <svg className={`w-2.5 h-2.5 ${iconColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" />
+          </svg>
+        )}
+      </div>
     </div>
   )
 }

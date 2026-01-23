@@ -117,15 +117,17 @@ export function Standings({ managers, form }: StandingsProps) {
   const sorted = [...managers].sort((a, b) => a.standing.rank - b.standing.rank)
 
   return (
-    <section className="bg-[var(--card)] rounded-xl border border-[var(--card-border)] overflow-hidden shadow-[var(--card-shadow)]">
+    <section className="bg-[var(--card)] rounded-xl border border-[var(--card-border)] overflow-hidden shadow-[var(--card-shadow)] flex flex-col h-full">
       <header className="px-4 py-3 border-b border-[var(--card-border)] bg-[var(--card-elevated)]">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
           Standings
         </h2>
       </header>
 
-      {/* Mobile view */}
-      <div className="sm:hidden">
+      {/* Content area - grows to fill space */}
+      <div className="flex-1">
+        {/* Mobile view */}
+        <div className="sm:hidden">
         {sorted.map((m, i) => (
           <MobileStandingCard
             key={m.entry.id}
@@ -193,10 +195,11 @@ export function Standings({ managers, form }: StandingsProps) {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Legend */}
-      <footer className="px-4 py-2 border-t border-[var(--card-border)] bg-[var(--card-elevated)]">
+      <footer className="px-4 py-2 border-t border-[var(--card-border)] bg-[var(--card-elevated)] mt-auto">
         <div className="flex items-center gap-4 text-[10px] text-[var(--muted)]">
           <span>PF = Points For</span>
           <span>PA = Points Against</span>
