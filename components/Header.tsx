@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { DeadlineInfo } from '@/lib/types'
 
 interface HeaderProps {
@@ -75,12 +75,15 @@ function CountdownTimer({
   icon: React.ReactNode
 }) {
   const [time, setTime] = useState<TimeRemaining | null>(null)
+  const [hasPassed, setHasPassed] = useState(false)
 
   useEffect(() => {
     if (!deadline) return
 
     const updateTime = () => {
-      setTime(getTimeRemaining(deadline))
+      const remaining = getTimeRemaining(deadline)
+      setTime(remaining)
+      setHasPassed(remaining === null && new Date(deadline) < new Date())
     }
 
     updateTime()
@@ -89,8 +92,6 @@ function CountdownTimer({
     return () => clearInterval(interval)
   }, [deadline])
 
-  if (!time) return null
-
   const urgency = getUrgencyLevel(time)
 
   const urgencyStyles = {
@@ -98,6 +99,7 @@ function CountdownTimer({
     warning: 'bg-[var(--warning-muted)] border-[var(--warning)]/30',
     urgent: 'bg-[var(--danger-muted)] border-[var(--danger)]/30',
     critical: 'bg-[var(--danger-muted)] border-[var(--danger)]/50 animate-urgent',
+    passed: 'bg-[var(--card-border)] border-[var(--card-border)]',
   }
 
   const textStyles = {
@@ -105,49 +107,64 @@ function CountdownTimer({
     warning: 'text-[var(--warning)]',
     urgent: 'text-[var(--danger)]',
     critical: 'text-[var(--danger)]',
+    passed: 'text-[var(--muted)]',
   }
+
+  const currentStyle = hasPassed ? 'passed' : urgency
 
   return (
     <div
-      className={`flex items-center gap-3 px-3 py-2 rounded-lg border transition-all ${urgencyStyles[urgency]}`}
+      className={`flex items-center gap-3 px-3 py-2 rounded-lg border transition-all ${urgencyStyles[currentStyle]}`}
       role="timer"
       aria-label={`${label} deadline countdown`}
     >
       {/* Icon */}
-      <div className={`text-sm ${textStyles[urgency]}`}>{icon}</div>
+      <div className={`text-sm ${textStyles[currentStyle]}`}>{icon}</div>
 
-      {/* Label */}
+      {/* Label and countdown */}
       <div className="flex flex-col min-w-0">
         <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--muted)]">
           {label}
         </span>
 
-        {/* Timer segments */}
-        <div className="flex items-baseline gap-1">
-          {time.days > 0 && (
-            <>
+        {hasPassed ? (
+          <span className="text-base font-bold text-[var(--muted)]">Passed</span>
+        ) : time ? (
+          <>
+            {/* Timer segments */}
+            <div className="flex items-baseline gap-1">
+              {time.days > 0 && (
+                <>
+                  <span className={`text-base font-bold tabular-nums ${textStyles[urgency]}`}>
+                    {time.days}
+                  </span>
+                  <span className="text-[10px] text-[var(--muted)] mr-1">d</span>
+                </>
+              )}
               <span className={`text-base font-bold tabular-nums ${textStyles[urgency]}`}>
-                {time.days}
+                {time.hours.toString().padStart(2, '0')}
               </span>
-              <span className="text-[10px] text-[var(--muted)] mr-1">d</span>
-            </>
-          )}
-          <span className={`text-base font-bold tabular-nums ${textStyles[urgency]}`}>
-            {time.hours.toString().padStart(2, '0')}
-          </span>
-          <span className="text-[10px] text-[var(--muted)]">:</span>
-          <span className={`text-base font-bold tabular-nums ${textStyles[urgency]}`}>
-            {time.minutes.toString().padStart(2, '0')}
-          </span>
-          <span className="text-[10px] text-[var(--muted)]">:</span>
-          <span className={`text-base font-bold tabular-nums ${textStyles[urgency]}`}>
-            {time.seconds.toString().padStart(2, '0')}
-          </span>
-        </div>
+              <span className="text-[10px] text-[var(--muted)]">:</span>
+              <span className={`text-base font-bold tabular-nums ${textStyles[urgency]}`}>
+                {time.minutes.toString().padStart(2, '0')}
+              </span>
+              <span className="text-[10px] text-[var(--muted)]">:</span>
+              <span className={`text-base font-bold tabular-nums ${textStyles[urgency]}`}>
+                {time.seconds.toString().padStart(2, '0')}
+              </span>
+            </div>
+            {/* Date below countdown */}
+            <span className="text-[10px] text-[var(--muted)]">
+              {formatDeadlineDate(deadline)}
+            </span>
+          </>
+        ) : (
+          <span className="text-sm text-[var(--muted)]">TBD</span>
+        )}
       </div>
 
       {/* Urgency indicator */}
-      {(urgency === 'urgent' || urgency === 'critical') && (
+      {(urgency === 'urgent' || urgency === 'critical') && !hasPassed && (
         <div className="w-2 h-2 rounded-full bg-[var(--danger)] animate-pulse-dot" />
       )}
     </div>
@@ -163,12 +180,15 @@ function CompactCountdownTimer({
   label: string
 }) {
   const [time, setTime] = useState<TimeRemaining | null>(null)
+  const [hasPassed, setHasPassed] = useState(false)
 
   useEffect(() => {
     if (!deadline) return
 
     const updateTime = () => {
-      setTime(getTimeRemaining(deadline))
+      const remaining = getTimeRemaining(deadline)
+      setTime(remaining)
+      setHasPassed(remaining === null && new Date(deadline) < new Date())
     }
 
     updateTime()
@@ -177,12 +197,11 @@ function CompactCountdownTimer({
     return () => clearInterval(interval)
   }, [deadline])
 
-  if (!time) return null
-
   const urgency = getUrgencyLevel(time)
   const isUrgent = urgency === 'urgent' || urgency === 'critical'
 
   const formatCompact = () => {
+    if (!time) return ''
     if (time.days > 0) {
       return `${time.days}d ${time.hours}h`
     }
@@ -192,20 +211,33 @@ function CompactCountdownTimer({
   }
 
   return (
-    <div className={`flex items-center gap-2 ${isUrgent ? 'text-[var(--danger)]' : ''}`}>
-      <span className="text-xs text-[var(--muted)]">{label}:</span>
-      <span className={`text-sm font-mono font-semibold ${isUrgent ? 'animate-urgent' : ''}`}>
-        {formatCompact()}
-      </span>
-      {isUrgent && <span className="live-dot" />}
+    <div className="flex flex-col">
+      <div className={`flex items-center gap-2 ${isUrgent && !hasPassed ? 'text-[var(--danger)]' : ''}`}>
+        <span className="text-xs text-[var(--muted)]">{label}:</span>
+        {hasPassed ? (
+          <span className="text-sm font-semibold text-[var(--muted)]">Passed</span>
+        ) : time ? (
+          <>
+            <span className={`text-sm font-mono font-semibold ${isUrgent ? 'animate-urgent' : ''}`}>
+              {formatCompact()}
+            </span>
+            {isUrgent && <span className="live-dot" />}
+          </>
+        ) : (
+          <span className="text-sm text-[var(--muted)]">TBD</span>
+        )}
+      </div>
+      {/* Date below */}
+      {!hasPassed && time && (
+        <span className="text-[10px] text-[var(--muted)] ml-auto">
+          {formatDeadlineDate(deadline)}
+        </span>
+      )}
     </div>
   )
 }
 
 export function Header({ leagueName, currentEvent, deadlineInfo }: HeaderProps) {
-  const [showFullTimers, setShowFullTimers] = useState(true)
-
-  // Detect if we have space for full timers (will be handled by CSS)
   return (
     <header className="sticky top-0 z-[var(--z-sticky)] glass border-b border-[var(--card-border)] safe-area-top">
       <div className="max-w-6xl mx-auto px-4 py-3">
@@ -286,30 +318,6 @@ export function Header({ leagueName, currentEvent, deadlineInfo }: HeaderProps) 
             <CompactCountdownTimer deadline={deadlineInfo.waiverDeadline} label="Waivers" />
             <CompactCountdownTimer deadline={deadlineInfo.lineupDeadline} label="Lineups" />
           </div>
-
-          {/* Deadline dates (collapsible) */}
-          <button
-            onClick={() => setShowFullTimers(!showFullTimers)}
-            className="w-full mt-2 text-center touch-target"
-            aria-expanded={showFullTimers}
-          >
-            <span className="text-[10px] text-[var(--muted)] hover:text-[var(--foreground)] transition-colors">
-              {showFullTimers ? 'Hide dates' : 'Show dates'}
-            </span>
-          </button>
-
-          {showFullTimers && (
-            <div className="grid grid-cols-2 gap-2 mt-2 pt-2 text-[10px] text-[var(--muted)] border-t border-[var(--card-border)] animate-fade-in">
-              <div>
-                <div className="font-medium uppercase tracking-wider mb-0.5">Waivers</div>
-                <div>{formatDeadlineDate(deadlineInfo.waiverDeadline)}</div>
-              </div>
-              <div className="text-right">
-                <div className="font-medium uppercase tracking-wider mb-0.5">Lineups</div>
-                <div>{formatDeadlineDate(deadlineInfo.lineupDeadline)}</div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </header>

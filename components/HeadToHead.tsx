@@ -105,10 +105,18 @@ function MobileH2HView({
 
                 if (total === 0) return null
 
+                const isDominant = record.wins > record.losses
+                const isLosing = record.losses > record.wins
+                const bgClass = isDominant
+                  ? 'bg-[var(--success-muted)]'
+                  : isLosing
+                  ? 'bg-[var(--danger-muted)]'
+                  : 'bg-[var(--background)]'
+
                 return (
                   <div
                     key={colEntry.id}
-                    className="flex items-center justify-between p-2 bg-[var(--background)] rounded-lg"
+                    className={`flex items-center justify-between p-2 rounded-lg ${bgClass}`}
                   >
                     <span className="text-xs font-medium text-[var(--muted)]">
                       vs {colEntry.short_name}
