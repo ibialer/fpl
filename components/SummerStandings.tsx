@@ -33,7 +33,11 @@ function SummerRankBadge({ rank }: { rank: number }) {
     )
   }
 
-  return <span className="text-sm font-medium text-[var(--muted)] w-6 text-center">{rank}</span>
+  return (
+    <span className="inline-flex items-center justify-center w-6 h-6 text-sm font-medium text-[var(--muted)]">
+      {rank}
+    </span>
+  )
 }
 
 // Mobile card view for summer standings

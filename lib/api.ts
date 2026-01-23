@@ -187,12 +187,11 @@ export function processTransactions(
     teamsMap.set(t.id, t.short_name)
   })
 
-  const playersMap = new Map<number, { name: string; team: string; photo: string | null }>()
+  const playersMap = new Map<number, { name: string; team: string }>()
   bootstrapStatic.elements.forEach((p) => {
     playersMap.set(p.id, {
       name: p.web_name,
       team: teamsMap.get(p.team) || '',
-      photo: p.code ? `https://resources.premierleague.com/premierleague/photos/players/110x140/p${p.code}.png` : null,
     })
   })
 
@@ -217,10 +216,8 @@ export function processTransactions(
     managerName: entryMap.get(t.entry) || 'Unknown',
     playerIn: playersMap.get(t.element_in)?.name || 'Unknown',
     playerInTeam: playersMap.get(t.element_in)?.team || '',
-    playerInPhoto: playersMap.get(t.element_in)?.photo || null,
     playerOut: playersMap.get(t.element_out)?.name || 'Unknown',
     playerOutTeam: playersMap.get(t.element_out)?.team || '',
-    playerOutPhoto: playersMap.get(t.element_out)?.photo || null,
     type: t.kind === 'w' ? 'waiver' : 'free',
     date: new Date(t.added).toLocaleDateString(),
   }))

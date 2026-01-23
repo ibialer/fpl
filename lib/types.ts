@@ -185,10 +185,8 @@ export interface TransactionWithDetails {
   managerName: string
   playerIn: string
   playerInTeam: string
-  playerInPhoto: string | null
   playerOut: string
   playerOutTeam: string
-  playerOutPhoto: string | null
   type: 'waiver' | 'free'
   date: string
 }
