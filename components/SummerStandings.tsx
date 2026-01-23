@@ -246,6 +246,7 @@ export function SummerStandings({ standings }: SummerStandingsProps) {
               <span>PF = Points For</span>
               <span>PA = Points Against</span>
               <span>+/- = Points Difference</span>
+              <span>Pts = League Points</span>
             </div>
           </footer>
         </>

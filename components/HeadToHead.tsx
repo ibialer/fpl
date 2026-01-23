@@ -15,13 +15,9 @@ function RecordCell({ record, isHighlighted }: { record: H2HRecord; isHighlighte
     )
   }
 
-  // Calculate win rate for background intensity
-  const winRate = record.wins / total
-  const lossRate = record.losses / total
-
-  // Determine dominant result
-  const isDominant = winRate >= 0.6
-  const isLosing = lossRate >= 0.6
+  // Determine dominant result based on wins vs losses
+  const isDominant = record.wins > record.losses
+  const isLosing = record.losses > record.wins
   const bgClass = isDominant
     ? 'bg-[var(--success-muted)]'
     : isLosing
