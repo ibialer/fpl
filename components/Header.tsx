@@ -239,7 +239,7 @@ function CompactCountdownTimer({
 
 export function Header({ leagueName, currentEvent, deadlineInfo }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-[var(--z-sticky)] glass border-b border-[var(--card-border)] safe-area-top">
+    <header className="sticky top-0 z-[var(--z-sticky)] glass bg-[var(--card)] border-b border-[var(--card-border)] safe-area-top">
       <div className="max-w-6xl mx-auto px-4 py-3">
         {/* Desktop layout */}
         <div className="hidden sm:flex items-center justify-between gap-4">
