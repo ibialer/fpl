@@ -51,7 +51,7 @@ export function TabNavigation({ tabs, activeTab, onTabChange }: TabNavigationPro
 
   return (
     <nav
-      className="sticky top-[73px] sm:top-[85px] z-[var(--z-sticky)] glass bg-[var(--card)] border-b border-[var(--card-border)]"
+className="sticky top-[73px] sm:top-[85px] z-[calc(var(--z-sticky)+1)] glass bg-[var(--card)] border-b border-[var(--card-border)]"
       role="tablist"
       aria-label="Dashboard navigation"
     >
