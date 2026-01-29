@@ -394,21 +394,38 @@ function FixtureCard({
 
         {/* Expand/collapse indicator */}
         {hasBreakdown && (
-          <div className="flex items-center justify-center gap-1 mt-3">
-            <svg
-              className={`w-4 h-4 text-[var(--muted)] transition-transform ${
-                isExpanded ? 'rotate-180' : ''
+          <div className="flex items-center justify-center mt-3">
+            <div
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
+                isExpanded
+                  ? 'bg-[var(--accent)]/20 text-[var(--accent)]'
+                  : 'bg-[var(--card-border)]/50 text-[var(--muted)] hover:bg-[var(--card-border)]'
               }`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
-            <span className="text-xs text-[var(--muted)]">
-              {isExpanded ? 'Hide' : 'Show'} breakdown
-            </span>
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+                />
+              </svg>
+              <span>{isExpanded ? 'Hide' : 'View'} Players</span>
+              <svg
+                className={`w-3 h-3 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
           </div>
         )}
       </button>
