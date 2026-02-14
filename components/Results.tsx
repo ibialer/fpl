@@ -87,6 +87,13 @@ function GameStatIcons({ game, positionName }: { game: PerGameStat; positionName
       </span>
     )
   }
+  if (game.goalsConceeded >= 2 && ['GK', 'DEF'].includes(positionName)) {
+    icons.push(
+      <span key="gc" title={`${game.goalsConceeded} goals conceded`} className="text-[9px] text-[var(--danger)] bg-[var(--card-border)] px-1 py-0.5 rounded">
+        GC:{game.goalsConceeded}
+      </span>
+    )
+  }
   if (game.defensiveContribution > 0 && ['DEF', 'MID'].includes(positionName)) {
     icons.push(
       <span key="dc" title={`${game.defensiveContribution} defensive contributions`} className="text-[9px] text-[var(--muted)] bg-[var(--card-border)] px-1 py-0.5 rounded">
