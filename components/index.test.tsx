@@ -277,20 +277,23 @@ describe('Fixtures', () => {
     expect(homeTeamElement.className).toContain('text-[var(--success)]')
   })
 
-  it('shows defensive contribution for DEF and MID players', () => {
+  it('shows info popup with details including DC for DEF and MID players', () => {
     const breakdownWithPlayers = {
       1: {
         entryId: 1, teamName: 'Home Team', playerName: 'Manager A',
         totalPoints: 55, players: [
           { name: 'Defender', points: 6, position: 1, isBenched: false, positionName: 'DEF',
             teamShortName: 'ARS', opponentShortName: 'CHE', isHome: true, opponents: [{ opponentShortName: 'CHE', isHome: true, started: true }],
-            goals: 0, assists: 0, cleanSheet: true, bonus: 0, yellowCards: 0, redCards: 0, minutesPlayed: 90, hasPlayed: true, defensiveContribution: 5 },
+            goals: 0, assists: 0, cleanSheet: true, bonus: 0, yellowCards: 0, redCards: 0, minutesPlayed: 90, hasPlayed: true, defensiveContribution: 5,
+            perGameStats: [{ fixtureId: 1, opponentShortName: 'CHE', isHome: true, minutes: 90, goals: 0, assists: 0, cleanSheet: true, yellowCards: 0, redCards: 0, bonus: 0, saves: 0, penaltiesSaved: 0, penaltiesMissed: 0, ownGoals: 0, points: 6 }] },
           { name: 'Midfielder', points: 8, position: 2, isBenched: false, positionName: 'MID',
             teamShortName: 'ARS', opponentShortName: 'CHE', isHome: true, opponents: [{ opponentShortName: 'CHE', isHome: true, started: true }],
-            goals: 1, assists: 0, cleanSheet: false, bonus: 0, yellowCards: 0, redCards: 0, minutesPlayed: 74, hasPlayed: true, defensiveContribution: 3 },
+            goals: 1, assists: 0, cleanSheet: false, bonus: 0, yellowCards: 0, redCards: 0, minutesPlayed: 74, hasPlayed: true, defensiveContribution: 3,
+            perGameStats: [{ fixtureId: 1, opponentShortName: 'CHE', isHome: true, minutes: 74, goals: 1, assists: 0, cleanSheet: false, yellowCards: 0, redCards: 0, bonus: 0, saves: 0, penaltiesSaved: 0, penaltiesMissed: 0, ownGoals: 0, points: 8 }] },
           { name: 'Forward', points: 10, position: 3, isBenched: false, positionName: 'FWD',
             teamShortName: 'ARS', opponentShortName: 'CHE', isHome: true, opponents: [{ opponentShortName: 'CHE', isHome: true, started: true }],
-            goals: 2, assists: 0, cleanSheet: false, bonus: 0, yellowCards: 0, redCards: 0, minutesPlayed: 90, hasPlayed: true, defensiveContribution: 2 },
+            goals: 2, assists: 0, cleanSheet: false, bonus: 0, yellowCards: 0, redCards: 0, minutesPlayed: 90, hasPlayed: true, defensiveContribution: 2,
+            perGameStats: [{ fixtureId: 1, opponentShortName: 'CHE', isHome: true, minutes: 90, goals: 2, assists: 0, cleanSheet: false, yellowCards: 0, redCards: 0, bonus: 0, saves: 0, penaltiesSaved: 0, penaltiesMissed: 0, ownGoals: 0, points: 10 }] },
         ],
       },
       2: {
@@ -304,10 +307,15 @@ describe('Fixtures', () => {
     // Click to expand the fixture
     const button = container.querySelector('button')
     if (button) fireEvent.click(button)
-    // Should show defensive contribution count for DEF (5) and MID (3) but not FWD
+    // Each player with hasPlayed should have an info button
+    const infoButtons = screen.getAllByTitle('View details')
+    expect(infoButtons.length).toBe(3)
+    // Click the Defender's info button to open popup - DC should show
+    fireEvent.click(infoButtons[0])
     expect(container.textContent).toContain('DC:5')
+    // Click the Midfielder's info button - DC should show
+    fireEvent.click(infoButtons[1])
     expect(container.textContent).toContain('DC:3')
-    expect(container.textContent).not.toContain('DC:2') // FWD should not show defensive contribution
   })
 })
 

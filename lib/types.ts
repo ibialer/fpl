@@ -266,6 +266,24 @@ export interface PlayerPointsFixture {
   started: boolean
 }
 
+export interface PerGameStat {
+  fixtureId: number
+  opponentShortName: string
+  isHome: boolean
+  minutes: number
+  goals: number
+  assists: number
+  cleanSheet: boolean
+  yellowCards: number
+  redCards: number
+  bonus: number
+  saves: number
+  penaltiesSaved: number
+  penaltiesMissed: number
+  ownGoals: number
+  points: number
+}
+
 export interface PlayerPoints {
   name: string
   points: number
@@ -286,6 +304,8 @@ export interface PlayerPoints {
   hasPlayed: boolean
   // Defensive stats (for DEF and MID)
   defensiveContribution: number
+  // Per-game breakdown (for DGW support)
+  perGameStats: PerGameStat[]
 }
 
 export interface TeamPointsBreakdown {
