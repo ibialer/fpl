@@ -241,10 +241,17 @@ function TeamBreakdown({
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                {/* Minutes played */}
+                {/* Minutes played - warning color when <60 min (1pt appearance instead of 2pts) */}
                 {p.hasPlayed && (
-                  <span className="text-[10px] text-[var(--muted)] tabular-nums" title="Minutes played">
-                    {p.minutesPlayed}&apos;
+                  <span
+                    className={`text-[10px] tabular-nums ${
+                      p.minutesPlayed > 0 && p.minutesPlayed < 60
+                        ? 'text-[var(--warning)] font-medium'
+                        : 'text-[var(--muted)]'
+                    }`}
+                    title={p.minutesPlayed >= 60 ? `${p.minutesPlayed} min (2pts)` : p.minutesPlayed > 0 ? `${p.minutesPlayed} min (1pt)` : 'Not yet played'}
+                  >
+                    {p.minutesPlayed > 0 ? `${p.minutesPlayed}'` : ''}
                   </span>
                 )}
 
