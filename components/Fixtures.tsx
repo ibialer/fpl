@@ -243,7 +243,9 @@ function TeamBreakdown({
               <div className="flex items-center gap-2 shrink-0">
                 {/* Fixture info - hidden on mobile for space */}
                 <span className="hidden sm:inline text-[10px] text-[var(--muted)]">
-                  {p.teamShortName} {p.isHome ? 'v' : '@'} {p.opponentShortName}
+                  {p.opponents.length > 0
+                    ? `${p.teamShortName} ${p.opponents.map((o) => `${o.isHome ? 'v' : '@'} ${o.opponentShortName}`).join(', ')}`
+                    : `${p.teamShortName} ${p.isHome ? 'v' : '@'} ${p.opponentShortName}`}
                 </span>
 
                 {/* Points */}

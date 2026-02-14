@@ -259,6 +259,12 @@ export interface LiveFixture {
 }
 
 // Processed types for points breakdown
+export interface PlayerPointsFixture {
+  opponentShortName: string
+  isHome: boolean
+  started: boolean
+}
+
 export interface PlayerPoints {
   name: string
   points: number
@@ -268,6 +274,7 @@ export interface PlayerPoints {
   teamShortName: string
   opponentShortName: string
   isHome: boolean
+  opponents: PlayerPointsFixture[]
   goals: number
   assists: number
   cleanSheet: boolean

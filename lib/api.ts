@@ -471,10 +471,16 @@ export async function fetchPointsBreakdown(
   const liveData = await fetchLiveEvent(currentEvent)
 
   // Build fixture lookup: team -> opponent info from live event data
-  const fixtureMap = new Map<number, { opponent: number; isHome: boolean; started: boolean }>()
+  // Use an array to support double gameweeks (multiple fixtures per team)
+  const fixtureMap = new Map<number, Array<{ opponent: number; isHome: boolean; started: boolean }>>()
   liveData.fixtures.forEach((f) => {
-    fixtureMap.set(f.team_h, { opponent: f.team_a, isHome: true, started: f.started })
-    fixtureMap.set(f.team_a, { opponent: f.team_h, isHome: false, started: f.started })
+    const homeEntries = fixtureMap.get(f.team_h) || []
+    homeEntries.push({ opponent: f.team_a, isHome: true, started: f.started })
+    fixtureMap.set(f.team_h, homeEntries)
+
+    const awayEntries = fixtureMap.get(f.team_a) || []
+    awayEntries.push({ opponent: f.team_h, isHome: false, started: f.started })
+    fixtureMap.set(f.team_a, awayEntries)
   })
 
   // Fetch picks for all entries in parallel
@@ -489,8 +495,14 @@ export async function fetchPointsBreakdown(
     const players = picks.map((pick) => {
       const elementData = liveData.elements[String(pick.element)]
       const playerData = playerDataMap.get(pick.element)
-      const fixtureInfo = playerData ? fixtureMap.get(playerData.team) : null
+      const fixtureInfos = playerData ? (fixtureMap.get(playerData.team) || []) : []
       const stats = elementData?.stats
+
+      const opponents = fixtureInfos.map((fi) => ({
+        opponentShortName: teamShortNameMap.get(fi.opponent) || '???',
+        isHome: fi.isHome,
+        started: fi.started,
+      }))
 
       return {
         name: playerData?.name || 'Unknown',
@@ -499,15 +511,16 @@ export async function fetchPointsBreakdown(
         isBenched: pick.position > 11,
         positionName: playerData ? getPositionName(playerData.elementType) : 'UNK',
         teamShortName: playerData ? (teamShortNameMap.get(playerData.team) || '???') : '???',
-        opponentShortName: fixtureInfo ? (teamShortNameMap.get(fixtureInfo.opponent) || '???') : '???',
-        isHome: fixtureInfo?.isHome || false,
+        opponentShortName: opponents.length > 0 ? opponents[0].opponentShortName : '???',
+        isHome: opponents.length > 0 ? opponents[0].isHome : false,
+        opponents,
         goals: stats?.goals_scored || 0,
         assists: stats?.assists || 0,
         cleanSheet: (stats?.clean_sheets || 0) > 0,
         bonus: stats?.bonus || 0,
         yellowCards: stats?.yellow_cards || 0,
         redCards: stats?.red_cards || 0,
-        hasPlayed: fixtureInfo?.started || false,
+        hasPlayed: fixtureInfos.some((fi) => fi.started),
         defensiveContribution: stats?.defensive_contribution || 0,
       }
     })
