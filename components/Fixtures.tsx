@@ -241,6 +241,13 @@ function TeamBreakdown({
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
+                {/* Minutes played */}
+                {p.hasPlayed && (
+                  <span className="text-[10px] text-[var(--muted)] tabular-nums" title="Minutes played">
+                    {p.minutesPlayed}&apos;
+                  </span>
+                )}
+
                 {/* Fixture info - hidden on mobile for space */}
                 <span className="hidden sm:inline text-[10px] text-[var(--muted)]">
                   {p.opponents.length > 0

@@ -240,6 +240,7 @@ export interface LiveElement {
     penalties_missed: number
     penalties_saved: number
     saves: number
+    minutes: number
     // Defensive stats
     clearances_blocks_interceptions: number
     recoveries: number
@@ -281,6 +282,7 @@ export interface PlayerPoints {
   bonus: number
   yellowCards: number
   redCards: number
+  minutesPlayed: number
   hasPlayed: boolean
   // Defensive stats (for DEF and MID)
   defensiveContribution: number
