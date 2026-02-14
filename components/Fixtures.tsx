@@ -102,19 +102,29 @@ function GameStatIcons({ game, positionName }: { game: PerGameStat; positionName
   for (let i = 0; i < game.ownGoals; i++) {
     icons.push(<span key={`og-${i}`} title="Own goal" className="stat-icon text-[var(--danger)]">OG</span>)
   }
-  if (game.penaltiesMissed > 0) {
-    icons.push(<span key="pm" title="Penalty missed" className="stat-icon text-[var(--danger)]">PM</span>)
+  for (let i = 0; i < game.penaltiesMissed; i++) {
+    icons.push(<span key={`pm-${i}`} title="Penalty missed" className="stat-icon text-[var(--danger)]">PM</span>)
   }
-  if (game.saves >= 3) {
+  for (let i = 0; i < game.penaltiesSaved; i++) {
+    icons.push(<span key={`ps-${i}`} title="Penalty saved" className="stat-icon text-[var(--success)]">PS</span>)
+  }
+  if (game.saves > 0 && positionName === 'GK') {
     icons.push(
-      <span key="sv" title={`${game.saves} saves`} className="text-[9px] text-[var(--muted)]">
-        {game.saves}sv
+      <span key="sv" title={`${game.saves} saves`} className="text-[9px] text-[var(--muted)] bg-[var(--card-border)] px-1 py-0.5 rounded">
+        S:{game.saves}
+      </span>
+    )
+  }
+  if (game.defensiveContribution > 0 && ['DEF', 'MID'].includes(positionName)) {
+    icons.push(
+      <span key="dc" title={`${game.defensiveContribution} defensive contributions`} className="text-[9px] text-[var(--muted)] bg-[var(--card-border)] px-1 py-0.5 rounded">
+        DC:{game.defensiveContribution}
       </span>
     )
   }
 
   if (icons.length === 0) return null
-  return <span className="inline-flex items-center gap-0.5">{icons}</span>
+  return <span className="inline-flex items-center gap-0.5 flex-wrap">{icons}</span>
 }
 
 // Player detail popup - shows per-game breakdown
@@ -197,23 +207,6 @@ function PlayerDetailPopover({ player }: { player: PlayerPoints }) {
                   </div>
                 </div>
               ))}
-              {/* Footer with aggregated extras */}
-              {(player.defensiveContribution > 0 || player.yellowCards > 0) && (
-                <div className="px-3 py-1.5 flex items-center gap-2 text-[10px] text-[var(--muted)]">
-                  {player.yellowCards > 0 && (
-                    <span className="inline-flex items-center gap-0.5">
-                      {Array.from({ length: player.yellowCards }, (_, i) => (
-                        <span key={i} className="stat-icon">🟨</span>
-                      ))}
-                    </span>
-                  )}
-                  {player.defensiveContribution > 0 && ['DEF', 'MID'].includes(player.positionName) && (
-                    <span className="bg-[var(--card-border)] px-1 py-0.5 rounded">
-                      DC:{player.defensiveContribution}
-                    </span>
-                  )}
-                </div>
-              )}
             </div>
           ) : (
             <div className="px-3 py-2 text-[10px] text-[var(--muted)]">
