@@ -136,7 +136,9 @@ function TeamBreakdownResult({
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <span className="hidden sm:inline text-[10px] text-[var(--muted)]">
-                  {p.teamShortName} {p.isHome ? 'v' : '@'} {p.opponentShortName}
+                  {p.opponents.length > 0
+                    ? `${p.teamShortName} ${p.opponents.map((o) => `${o.isHome ? 'v' : '@'} ${o.opponentShortName}`).join(', ')}`
+                    : `${p.teamShortName} ${p.isHome ? 'v' : '@'} ${p.opponentShortName}`}
                 </span>
                 <span
                   className={`font-semibold min-w-[3ch] text-right tabular-nums ${
