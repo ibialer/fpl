@@ -102,19 +102,11 @@ function GameStatIcons({ game, positionName }: { game: PerGameStat; positionName
   for (let i = 0; i < game.ownGoals; i++) {
     icons.push(<span key={`og-${i}`} title="Own goal" className="stat-icon text-[var(--danger)]">OG</span>)
   }
-  if (game.penaltiesMissed > 0) {
-    icons.push(
-      <span key="pm" title={`${game.penaltiesMissed} penalty missed`} className="text-[9px] text-[var(--danger)] bg-[var(--danger-muted)] px-1 py-0.5 rounded">
-        PM:{game.penaltiesMissed}
-      </span>
-    )
+  for (let i = 0; i < game.penaltiesMissed; i++) {
+    icons.push(<span key={`pm-${i}`} title="Penalty missed" className="stat-icon text-[var(--danger)]">PM</span>)
   }
-  if (game.penaltiesSaved > 0) {
-    icons.push(
-      <span key="ps" title={`${game.penaltiesSaved} penalty saved`} className="text-[9px] text-[var(--success)] bg-[var(--success-muted)] px-1 py-0.5 rounded">
-        PS:{game.penaltiesSaved}
-      </span>
-    )
+  for (let i = 0; i < game.penaltiesSaved; i++) {
+    icons.push(<span key={`ps-${i}`} title="Penalty saved" className="stat-icon text-[var(--success)]">PS</span>)
   }
   if (game.saves > 0 && positionName === 'GK') {
     icons.push(
