@@ -281,6 +281,7 @@ export interface PerGameStat {
   penaltiesSaved: number
   penaltiesMissed: number
   ownGoals: number
+  goalsConceeded: number
   defensiveContribution: number
   points: number
 }

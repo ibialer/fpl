@@ -100,6 +100,7 @@ const createMockBootstrapStatic = (): BootstrapStatic => ({
   elements: [
     {
       id: 1,
+      code: 1001,
       first_name: 'Mohamed',
       second_name: 'Salah',
       web_name: 'Salah',
@@ -120,6 +121,7 @@ const createMockBootstrapStatic = (): BootstrapStatic => ({
     },
     {
       id: 2,
+      code: 1002,
       first_name: 'Erling',
       second_name: 'Haaland',
       web_name: 'Haaland',
