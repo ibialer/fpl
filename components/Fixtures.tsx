@@ -81,7 +81,7 @@ function StatIcons({ player, isTopScorer }: { player: PlayerPoints; isTopScorer?
 }
 
 // Per-game stat icons for the detail popup
-function GameStatIcons({ game, positionName, defensiveContribution }: { game: PerGameStat; positionName: string; defensiveContribution?: number }) {
+function GameStatIcons({ game, positionName }: { game: PerGameStat; positionName: string }) {
   const icons: React.ReactNode[] = []
 
   for (let i = 0; i < game.goals; i++) {
@@ -112,10 +112,10 @@ function GameStatIcons({ game, positionName, defensiveContribution }: { game: Pe
       </span>
     )
   }
-  if (defensiveContribution && defensiveContribution > 0 && ['DEF', 'MID'].includes(positionName)) {
+  if (game.defensiveContribution > 0 && ['DEF', 'MID'].includes(positionName)) {
     icons.push(
-      <span key="dc" title={`${defensiveContribution} defensive contributions`} className="text-[9px] text-[var(--muted)] bg-[var(--card-border)] px-1 py-0.5 rounded">
-        DC:{defensiveContribution}
+      <span key="dc" title={`${game.defensiveContribution} defensive contributions`} className="text-[9px] text-[var(--muted)] bg-[var(--card-border)] px-1 py-0.5 rounded">
+        DC:{game.defensiveContribution}
       </span>
     )
   }
@@ -194,11 +194,7 @@ function PlayerDetailPopover({ player }: { player: PlayerPoints }) {
                       >
                         {game.minutes}&apos;
                       </span>
-                      <GameStatIcons
-                        game={game}
-                        positionName={player.positionName}
-                        defensiveContribution={idx === 0 ? player.defensiveContribution : undefined}
-                      />
+                      <GameStatIcons game={game} positionName={player.positionName} />
                     </div>
                     {game.bonus > 0 && (
                       <span className="text-[9px] font-medium text-[var(--accent)] bg-[var(--accent-muted)] px-1 py-0.5 rounded">

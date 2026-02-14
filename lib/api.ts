@@ -517,7 +517,7 @@ export async function fetchPointsBreakdown(
 
         let minutes = 0, goals = 0, assists = 0, cleanSheets = 0
         let yellowCards = 0, redCards = 0, bonus = 0, saves = 0
-        let pensSaved = 0, pensMissed = 0, ownGoals = 0
+        let pensSaved = 0, pensMissed = 0, ownGoals = 0, dc = 0
         let totalPoints = 0
 
         statEntries.forEach((entry) => {
@@ -534,6 +534,7 @@ export async function fetchPointsBreakdown(
             case 'penalties_saved': pensSaved = entry.value; break
             case 'penalties_missed': pensMissed = entry.value; break
             case 'own_goals': ownGoals = entry.value; break
+            case 'defensive_contribution': dc = entry.value; break
           }
         })
 
@@ -552,6 +553,7 @@ export async function fetchPointsBreakdown(
           penaltiesSaved: pensSaved,
           penaltiesMissed: pensMissed,
           ownGoals,
+          defensiveContribution: dc,
           points: totalPoints,
         }
       })
