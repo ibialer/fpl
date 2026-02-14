@@ -80,7 +80,7 @@ function GameStatIcons({ game, positionName }: { game: PerGameStat; positionName
   for (let i = 0; i < game.penaltiesSaved; i++) {
     icons.push(<span key={`ps-${i}`} title="Penalty saved" className="stat-icon text-[var(--success)]">PS</span>)
   }
-  if (game.saves > 0 && positionName === 'GK') {
+  if (game.saves >= 3 && positionName === 'GK') {
     icons.push(
       <span key="sv" title={`${game.saves} saves`} className="text-[9px] text-[var(--muted)] bg-[var(--card-border)] px-1 py-0.5 rounded">
         S:{game.saves}
