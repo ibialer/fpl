@@ -473,7 +473,11 @@ export async function fetchPointsBreakdown(
   // Build fixture lookup: team -> opponent info from live event data
   // Use an array to support double gameweeks (multiple fixtures per team)
   const fixtureMap = new Map<number, Array<{ opponent: number; isHome: boolean; started: boolean }>>()
+  // Also build fixtureId -> fixture info for per-game stat parsing
+  const fixtureIdMap = new Map<number, { teamH: number; teamA: number }>()
   liveData.fixtures.forEach((f) => {
+    fixtureIdMap.set(f.id, { teamH: f.team_h, teamA: f.team_a })
+
     const homeEntries = fixtureMap.get(f.team_h) || []
     homeEntries.push({ opponent: f.team_a, isHome: true, started: f.started })
     fixtureMap.set(f.team_h, homeEntries)
@@ -504,6 +508,54 @@ export async function fetchPointsBreakdown(
         started: fi.started,
       }))
 
+      // Parse per-game stats from the explain field
+      const perGameStats = (elementData?.explain || []).map(([statEntries, fixtureId]) => {
+        const fixtureInfo = fixtureIdMap.get(fixtureId)
+        const playerTeam = playerData?.team
+        const isHome = fixtureInfo ? fixtureInfo.teamH === playerTeam : false
+        const opponentTeamId = fixtureInfo ? (isHome ? fixtureInfo.teamA : fixtureInfo.teamH) : 0
+
+        let minutes = 0, goals = 0, assists = 0, cleanSheets = 0
+        let yellowCards = 0, redCards = 0, bonus = 0, saves = 0
+        let pensSaved = 0, pensMissed = 0, ownGoals = 0
+        let totalPoints = 0
+
+        statEntries.forEach((entry) => {
+          totalPoints += entry.points
+          switch (entry.stat) {
+            case 'minutes': minutes = entry.value; break
+            case 'goals_scored': goals = entry.value; break
+            case 'assists': assists = entry.value; break
+            case 'clean_sheets': cleanSheets = entry.value; break
+            case 'yellow_cards': yellowCards = entry.value; break
+            case 'red_cards': redCards = entry.value; break
+            case 'bonus': bonus = entry.value; break
+            case 'saves': saves = entry.value; break
+            case 'penalties_saved': pensSaved = entry.value; break
+            case 'penalties_missed': pensMissed = entry.value; break
+            case 'own_goals': ownGoals = entry.value; break
+          }
+        })
+
+        return {
+          fixtureId,
+          opponentShortName: teamShortNameMap.get(opponentTeamId) || '???',
+          isHome,
+          minutes,
+          goals,
+          assists,
+          cleanSheet: cleanSheets > 0,
+          yellowCards,
+          redCards,
+          bonus,
+          saves,
+          penaltiesSaved: pensSaved,
+          penaltiesMissed: pensMissed,
+          ownGoals,
+          points: totalPoints,
+        }
+      })
+
       return {
         name: playerData?.name || 'Unknown',
         points: stats?.total_points || 0,
@@ -523,6 +575,7 @@ export async function fetchPointsBreakdown(
         minutesPlayed: stats?.minutes || 0,
         hasPlayed: fixtureInfos.some((fi) => fi.started),
         defensiveContribution: stats?.defensive_contribution || 0,
+        perGameStats,
       }
     })
 
