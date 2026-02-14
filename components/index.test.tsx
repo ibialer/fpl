@@ -158,8 +158,8 @@ describe('Transactions', () => {
 
   it('renders transactions list', () => {
     const transactions = [{
-      id: 1, event: 21, managerName: 'Manager', playerIn: 'Salah',
-      playerOut: 'Bruno', type: 'waiver' as const, date: '2024-01-01',
+      id: 1, event: 21, managerName: 'Manager', playerIn: 'Salah', playerInTeam: 'LIV',
+      playerOut: 'Bruno', playerOutTeam: 'MUN', type: 'waiver' as const, date: '2024-01-01',
     }]
     render(<Transactions transactions={transactions} currentEvent={21} />)
     expect(screen.getByText('Manager')).toBeInTheDocument()
