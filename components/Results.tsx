@@ -53,7 +53,7 @@ function StatIcons({ player, isTopScorer }: { player: PlayerPoints; isTopScorer?
 }
 
 // Per-game stat icons for the detail popup
-function GameStatIcons({ game, positionName }: { game: PerGameStat; positionName: string }) {
+function GameStatIcons({ game, positionName, defensiveContribution }: { game: PerGameStat; positionName: string; defensiveContribution?: number }) {
   const icons: React.ReactNode[] = []
 
   for (let i = 0; i < game.goals; i++) {
@@ -80,9 +80,16 @@ function GameStatIcons({ game, positionName }: { game: PerGameStat; positionName
   if (game.saves >= 3) {
     icons.push(<span key="sv" title={`${game.saves} saves`} className="text-[9px] text-[var(--muted)]">{game.saves}sv</span>)
   }
+  if (defensiveContribution && defensiveContribution > 0 && ['DEF', 'MID'].includes(positionName)) {
+    icons.push(
+      <span key="dc" title={`${defensiveContribution} defensive contributions`} className="text-[9px] text-[var(--muted)] bg-[var(--card-border)] px-1 py-0.5 rounded">
+        DC:{defensiveContribution}
+      </span>
+    )
+  }
 
   if (icons.length === 0) return null
-  return <span className="inline-flex items-center gap-0.5">{icons}</span>
+  return <span className="inline-flex items-center gap-0.5 flex-wrap">{icons}</span>
 }
 
 // Player detail popup - shows per-game breakdown
@@ -152,7 +159,11 @@ function PlayerDetailPopover({ player }: { player: PlayerPoints }) {
                       >
                         {game.minutes}&apos;
                       </span>
-                      <GameStatIcons game={game} positionName={player.positionName} />
+                      <GameStatIcons
+                        game={game}
+                        positionName={player.positionName}
+                        defensiveContribution={idx === 0 ? player.defensiveContribution : undefined}
+                      />
                     </div>
                     {game.bonus > 0 && (
                       <span className="text-[9px] font-medium text-[var(--accent)] bg-[var(--accent-muted)] px-1 py-0.5 rounded">
@@ -162,22 +173,6 @@ function PlayerDetailPopover({ player }: { player: PlayerPoints }) {
                   </div>
                 </div>
               ))}
-              {(player.defensiveContribution > 0 || player.yellowCards > 0) && (
-                <div className="px-3 py-1.5 flex items-center gap-2 text-[10px] text-[var(--muted)]">
-                  {player.yellowCards > 0 && (
-                    <span className="inline-flex items-center gap-0.5">
-                      {Array.from({ length: player.yellowCards }, (_, i) => (
-                        <span key={i} className="stat-icon">🟨</span>
-                      ))}
-                    </span>
-                  )}
-                  {player.defensiveContribution > 0 && ['DEF', 'MID'].includes(player.positionName) && (
-                    <span className="bg-[var(--card-border)] px-1 py-0.5 rounded">
-                      DC:{player.defensiveContribution}
-                    </span>
-                  )}
-                </div>
-              )}
             </div>
           ) : (
             <div className="px-3 py-2 text-[10px] text-[var(--muted)]">
