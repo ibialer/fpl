@@ -135,6 +135,18 @@ function TeamBreakdownResult({
                 <StatIcons player={p} isTopScorer={isTop} />
               </div>
               <div className="flex items-center gap-2 shrink-0">
+                {p.minutesPlayed > 0 && (
+                  <span
+                    className={`text-[10px] tabular-nums ${
+                      p.minutesPlayed < 60
+                        ? 'text-[var(--warning)] font-medium'
+                        : 'text-[var(--muted)]'
+                    }`}
+                    title={p.minutesPlayed >= 60 ? `${p.minutesPlayed} min (2pts)` : `${p.minutesPlayed} min (1pt)`}
+                  >
+                    {p.minutesPlayed}&apos;
+                  </span>
+                )}
                 <span className="hidden sm:inline text-[10px] text-[var(--muted)]">
                   {p.opponents.length > 0
                     ? `${p.teamShortName} ${p.opponents.map((o) => `${o.isHome ? 'v' : '@'} ${o.opponentShortName}`).join(', ')}`

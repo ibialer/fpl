@@ -520,6 +520,7 @@ export async function fetchPointsBreakdown(
         bonus: stats?.bonus || 0,
         yellowCards: stats?.yellow_cards || 0,
         redCards: stats?.red_cards || 0,
+        minutesPlayed: stats?.minutes || 0,
         hasPlayed: fixtureInfos.some((fi) => fi.started),
         defensiveContribution: stats?.defensive_contribution || 0,
       }

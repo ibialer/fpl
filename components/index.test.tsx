@@ -284,13 +284,13 @@ describe('Fixtures', () => {
         totalPoints: 55, players: [
           { name: 'Defender', points: 6, position: 1, isBenched: false, positionName: 'DEF',
             teamShortName: 'ARS', opponentShortName: 'CHE', isHome: true, opponents: [{ opponentShortName: 'CHE', isHome: true, started: true }],
-            goals: 0, assists: 0, cleanSheet: true, bonus: 0, yellowCards: 0, redCards: 0, hasPlayed: true, defensiveContribution: 5 },
+            goals: 0, assists: 0, cleanSheet: true, bonus: 0, yellowCards: 0, redCards: 0, minutesPlayed: 90, hasPlayed: true, defensiveContribution: 5 },
           { name: 'Midfielder', points: 8, position: 2, isBenched: false, positionName: 'MID',
             teamShortName: 'ARS', opponentShortName: 'CHE', isHome: true, opponents: [{ opponentShortName: 'CHE', isHome: true, started: true }],
-            goals: 1, assists: 0, cleanSheet: false, bonus: 0, yellowCards: 0, redCards: 0, hasPlayed: true, defensiveContribution: 3 },
+            goals: 1, assists: 0, cleanSheet: false, bonus: 0, yellowCards: 0, redCards: 0, minutesPlayed: 74, hasPlayed: true, defensiveContribution: 3 },
           { name: 'Forward', points: 10, position: 3, isBenched: false, positionName: 'FWD',
             teamShortName: 'ARS', opponentShortName: 'CHE', isHome: true, opponents: [{ opponentShortName: 'CHE', isHome: true, started: true }],
-            goals: 2, assists: 0, cleanSheet: false, bonus: 0, yellowCards: 0, redCards: 0, hasPlayed: true, defensiveContribution: 2 },
+            goals: 2, assists: 0, cleanSheet: false, bonus: 0, yellowCards: 0, redCards: 0, minutesPlayed: 90, hasPlayed: true, defensiveContribution: 2 },
         ],
       },
       2: {
