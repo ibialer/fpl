@@ -4,39 +4,25 @@ interface LuckMetricsProps {
   luckMetrics: LuckMetricsData[]
 }
 
-function LuckBar({ value, max, color }: { value: number; max: number; color: string }) {
-  const pct = max > 0 ? (value / max) * 100 : 0
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex-1 h-2 rounded-full bg-[var(--card-border)] overflow-hidden">
-        <div
-          className={`h-full rounded-full ${color}`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
-  )
-}
-
-function DeltaBadge({ delta }: { delta: number }) {
-  if (delta === 0) {
+function LuckIndexBadge({ value }: { value: number }) {
+  if (value === 0) {
     return <span className="text-xs text-[var(--muted)]">0</span>
   }
 
-  const isPositive = delta > 0
+  const isPositive = value > 0
   return (
     <span
       className={`text-xs font-bold ${
         isPositive ? 'text-[var(--success)]' : 'text-[var(--danger)]'
       }`}
     >
-      {isPositive ? '+' : ''}{delta}
+      {isPositive ? '+' : ''}{value}
     </span>
   )
 }
 
 // Mobile card view
-function MobileLuckCard({ data, maxNarrowWins }: { data: LuckMetricsData; maxNarrowWins: number }) {
+function MobileLuckCard({ data }: { data: LuckMetricsData }) {
   return (
     <div className="p-3 border-b border-[var(--card-border)] last:border-b-0">
       <div className="flex items-center justify-between mb-2">
@@ -46,7 +32,7 @@ function MobileLuckCard({ data, maxNarrowWins }: { data: LuckMetricsData; maxNar
         </div>
         <div className="text-right">
           <div className="text-[10px] text-[var(--muted)] uppercase">Luck</div>
-          <DeltaBadge delta={data.luckDelta} />
+          <LuckIndexBadge value={data.luckIndex} />
         </div>
       </div>
 
@@ -97,9 +83,8 @@ export function LuckMetrics({ luckMetrics }: LuckMetricsProps) {
     )
   }
 
-  // Sort by luck delta descending (luckiest first)
-  const sorted = [...luckMetrics].sort((a, b) => b.luckDelta - a.luckDelta)
-  const maxNarrowWins = Math.max(...sorted.map((d) => d.narrowWins))
+  // Sort by luck index descending (luckiest first)
+  const sorted = [...luckMetrics].sort((a, b) => b.luckIndex - a.luckIndex)
 
   return (
     <section className="bg-[var(--card)] rounded-xl border border-[var(--card-border)] overflow-hidden shadow-[var(--card-shadow)]">
@@ -112,7 +97,7 @@ export function LuckMetrics({ luckMetrics }: LuckMetricsProps) {
       {/* Mobile view */}
       <div className="sm:hidden">
         {sorted.map((data) => (
-          <MobileLuckCard key={data.entryId} data={data} maxNarrowWins={maxNarrowWins} />
+          <MobileLuckCard key={data.entryId} data={data} />
         ))}
       </div>
 
@@ -128,7 +113,7 @@ export function LuckMetrics({ luckMetrics }: LuckMetricsProps) {
               <th className="text-center px-3 py-3 font-medium" title="Lost while placing top 3 in GW points">Unlucky L</th>
               <th className="text-center px-3 py-3 font-medium" title="Expected wins based on points vs all opponents">Exp W</th>
               <th className="text-center px-3 py-3 font-medium">Actual W</th>
-              <th className="text-center px-3 py-3 font-medium" title="Actual wins minus expected wins">Luck</th>
+              <th className="text-center px-3 py-3 font-medium" title="Composite luck score based on all metrics">Luck</th>
             </tr>
           </thead>
           <tbody>
@@ -154,7 +139,7 @@ export function LuckMetrics({ luckMetrics }: LuckMetricsProps) {
                 <td className="text-center px-3 py-3 tabular-nums">{data.expectedWins}</td>
                 <td className="text-center px-3 py-3 tabular-nums">{data.actualWins}</td>
                 <td className="text-center px-3 py-3">
-                  <DeltaBadge delta={data.luckDelta} />
+                  <LuckIndexBadge value={data.luckIndex} />
                 </td>
               </tr>
             ))}
@@ -168,7 +153,7 @@ export function LuckMetrics({ luckMetrics }: LuckMetricsProps) {
           <span>Narrow W = Won by 5 pts or less</span>
           <span>Lucky W = Won while 4th-5th in GW</span>
           <span>Unlucky L = Lost while top 3 in GW</span>
-          <span>Luck = Actual W - Expected W</span>
+          <span>Luck = Composite score (+ lucky, - unlucky)</span>
         </div>
       </footer>
     </section>

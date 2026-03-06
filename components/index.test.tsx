@@ -326,12 +326,12 @@ describe('LuckMetrics', () => {
     {
       entryId: 1, teamName: 'Lucky Team', managerName: 'John Doe',
       narrowWins: 3, opponentAvgPoints: 42.5, luckyWins: 2, unluckyLosses: 0,
-      expectedWins: 8.2, actualWins: 11, luckDelta: 2.8,
+      expectedWins: 8.2, actualWins: 11, draws: 1, luckIndex: 2.8,
     },
     {
       entryId: 2, teamName: 'Unlucky Team', managerName: 'Jane Smith',
       narrowWins: 1, opponentAvgPoints: 55.3, luckyWins: 0, unluckyLosses: 3,
-      expectedWins: 10.5, actualWins: 7, luckDelta: -3.5,
+      expectedWins: 10.5, actualWins: 7, draws: 4, luckIndex: -3.5,
     },
   ]
 

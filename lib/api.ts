@@ -730,7 +730,8 @@ export interface LuckMetricsData {
   unluckyLosses: number
   expectedWins: number
   actualWins: number
-  luckDelta: number
+  draws: number
+  luckIndex: number
 }
 
 export function calculateLuckMetrics(
@@ -761,6 +762,7 @@ export function calculateLuckMetrics(
       unluckyLosses: number
       expectedWins: number
       actualWins: number
+      draws: number
     }
   >()
 
@@ -773,6 +775,7 @@ export function calculateLuckMetrics(
       unluckyLosses: 0,
       expectedWins: 0,
       actualWins: 0,
+      draws: 0,
     })
   })
 
@@ -818,9 +821,13 @@ export function calculateLuckMetrics(
       if (team1Won && diff <= 5) team1Stats.narrowWins++
       if (team2Won && diff <= 5) team2Stats.narrowWins++
 
-      // Actual wins
+      // Actual wins and draws
       if (team1Won) team1Stats.actualWins++
       if (team2Won) team2Stats.actualWins++
+      if (!team1Won && !team2Won) {
+        team1Stats.draws++
+        team2Stats.draws++
+      }
 
       // Lucky wins: won but ranked 4th or 5th in GW
       const team1Rank = teamRank.get(m.league_entry_1)!
@@ -846,21 +853,41 @@ export function calculateLuckMetrics(
     })
   })
 
+  // Calculate league-wide average opponent points for normalization
+  let totalOppPoints = 0
+  let totalMatches = 0
+  teamStats.forEach((stats) => {
+    totalOppPoints += stats.opponentPointsTotal
+    totalMatches += stats.matchesPlayed
+  })
+  const leagueAvgOppPts = totalMatches > 0 ? totalOppPoints / totalMatches : 1
+
   return entries.map((e) => {
     const stats = teamStats.get(e.id)!
+    const gp = stats.matchesPlayed || 1
+    const oppAvg = stats.opponentPointsTotal / gp
+
+    // Composite luck index formula (roughly -10 to +10 scale)
+    const luckIndex =
+      40 * (stats.actualWins - stats.expectedWins) / gp +
+      15 * stats.narrowWins / gp +
+      20 * stats.luckyWins / gp -
+      20 * stats.unluckyLosses / gp -
+      10 * stats.draws / gp -
+      15 * (oppAvg - leagueAvgOppPts) / leagueAvgOppPts
+
     return {
       entryId: e.id,
       teamName: e.entry_name,
       managerName: `${e.player_first_name} ${e.player_last_name}`,
       narrowWins: stats.narrowWins,
-      opponentAvgPoints: stats.matchesPlayed > 0
-        ? Math.round((stats.opponentPointsTotal / stats.matchesPlayed) * 10) / 10
-        : 0,
+      opponentAvgPoints: Math.round(oppAvg * 10) / 10,
       luckyWins: stats.luckyWins,
       unluckyLosses: stats.unluckyLosses,
       expectedWins: Math.round(stats.expectedWins * 10) / 10,
       actualWins: stats.actualWins,
-      luckDelta: Math.round((stats.actualWins - stats.expectedWins) * 10) / 10,
+      draws: stats.draws,
+      luckIndex: Math.round(luckIndex * 10) / 10,
     }
   })
 }

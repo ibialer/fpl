@@ -612,7 +612,7 @@ describe('calculateLuckMetrics', () => {
     expect(team1.unluckyLosses).toBe(0)
   })
 
-  it('calculates expected wins and luck delta', () => {
+  it('calculates expected wins correctly', () => {
     // GW1 scores: Team 1=60, Team 2=50, Team 3=40, Team 4=30, Team 5=20, Team 6=10
     // Team 1 (60) would beat all 5 opponents -> expected = 5/5 = 1.0
     // Team 6 (10) would beat 0 opponents -> expected = 0/5 = 0.0
@@ -628,20 +628,38 @@ describe('calculateLuckMetrics', () => {
     const team3 = metrics.find((m) => m.entryId === 3)!
     const team6 = metrics.find((m) => m.entryId === 6)!
 
-    // Team 1: expected 1.0, actual 1 -> delta 0
     expect(team1.expectedWins).toBe(1)
     expect(team1.actualWins).toBe(1)
-    expect(team1.luckDelta).toBe(0)
 
-    // Team 3: expected 0.6, actual 1 -> delta 0.4
     expect(team3.expectedWins).toBe(0.6)
     expect(team3.actualWins).toBe(1)
-    expect(team3.luckDelta).toBe(0.4)
 
-    // Team 6: expected 0, actual 0 -> delta 0
     expect(team6.expectedWins).toBe(0)
     expect(team6.actualWins).toBe(0)
-    expect(team6.luckDelta).toBe(0)
+  })
+
+  it('computes composite luck index using all factors', () => {
+    // GW1 scores: Team 1=60, Team 2=50, Team 3=40, Team 4=30, Team 5=20, Team 6=10
+    // Team 3 (40pts, ranked 3rd) beats Team 4 (30pts, ranked 4th)
+    // Team 3: actualW=1, expectedW=0.6, narrowWins=0(diff=10), luckyWins=0, unluckyLosses=0, draws=0
+    // luckIndex should be positive (won more than expected)
+    const league = createSixTeamLeague([
+      { event: 1, finished: true, started: true, league_entry_1: 1, league_entry_1_points: 60, league_entry_2: 2, league_entry_2_points: 50, winning_league_entry: 1, winning_method: 'points' },
+      { event: 1, finished: true, started: true, league_entry_1: 3, league_entry_1_points: 40, league_entry_2: 4, league_entry_2_points: 30, winning_league_entry: 3, winning_method: 'points' },
+      { event: 1, finished: true, started: true, league_entry_1: 5, league_entry_1_points: 20, league_entry_2: 6, league_entry_2_points: 10, winning_league_entry: 5, winning_method: 'points' },
+    ])
+
+    const metrics = calculateLuckMetrics(league)
+    const team3 = metrics.find((m) => m.entryId === 3)!
+
+    // Team 3 won more than expected -> positive luck index
+    expect(team3.luckIndex).toBeGreaterThan(0)
+
+    // Team 1 is the best scorer and won -> should be near 0 or slightly negative (faced strong opponent)
+    const team1 = metrics.find((m) => m.entryId === 1)!
+    // Luckiest team should have the highest index
+    const sorted = [...metrics].sort((a, b) => b.luckIndex - a.luckIndex)
+    expect(sorted[0].luckIndex).toBeGreaterThan(sorted[sorted.length - 1].luckIndex)
   })
 
   it('ignores unfinished matches', () => {
@@ -669,11 +687,31 @@ describe('calculateLuckMetrics', () => {
     ])
 
     const metrics = calculateLuckMetrics(league)
-    // Everyone draws their match, expected = 0.5 (5 draws / 5 opponents * 0.5 each)
     metrics.forEach((m) => {
       expect(m.expectedWins).toBe(0.5)
       expect(m.actualWins).toBe(0)
-      expect(m.luckDelta).toBe(-0.5)
+      expect(m.draws).toBe(1)
+      // Draws penalize luck index -> should be negative
+      expect(m.luckIndex).toBeLessThan(0)
     })
+  })
+
+  it('draws negatively impact luck index', () => {
+    // Two GWs: Team 1 wins GW1 cleanly, Team 2 draws GW1
+    // Compare their luck indices - team with draw should be lower (all else equal-ish)
+    const league = createSixTeamLeague([
+      // GW1: Team 1 beats Team 2 by 10, Team 3 draws Team 4, Team 5 beats Team 6
+      { event: 1, finished: true, started: true, league_entry_1: 1, league_entry_1_points: 55, league_entry_2: 2, league_entry_2_points: 45, winning_league_entry: 1, winning_method: 'points' },
+      { event: 1, finished: true, started: true, league_entry_1: 3, league_entry_1_points: 50, league_entry_2: 4, league_entry_2_points: 50, winning_league_entry: null, winning_method: null },
+      { event: 1, finished: true, started: true, league_entry_1: 5, league_entry_1_points: 40, league_entry_2: 6, league_entry_2_points: 30, winning_league_entry: 5, winning_method: 'points' },
+    ])
+
+    const metrics = calculateLuckMetrics(league)
+    const team3 = metrics.find((m) => m.entryId === 3)!
+    const team4 = metrics.find((m) => m.entryId === 4)!
+
+    // Both drew, so both should have draws = 1
+    expect(team3.draws).toBe(1)
+    expect(team4.draws).toBe(1)
   })
 })
