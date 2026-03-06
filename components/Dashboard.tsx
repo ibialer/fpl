@@ -11,6 +11,7 @@ import { Transactions } from './Transactions'
 import { Results } from './Results'
 import { UpcomingFixtures } from './UpcomingFixtures'
 import { WhatIf } from './WhatIf'
+import { LuckMetrics } from './LuckMetrics'
 import {
   ManagerWithSquad,
   FixtureWithNames,
@@ -19,7 +20,7 @@ import {
   LeagueEntry,
   WhatIfSquad,
 } from '@/lib/types'
-import { FormResult, H2HRecord } from '@/lib/api'
+import { FormResult, H2HRecord, LuckMetricsData } from '@/lib/api'
 
 interface SummerStandingEntry {
   entry: LeagueEntry
@@ -46,6 +47,7 @@ interface DashboardProps {
   transactions: TransactionWithDetails[]
   transactionsEvent: number
   whatIfSquads: WhatIfSquad[]
+  luckMetrics: LuckMetricsData[]
 }
 
 const TABS = [
@@ -69,6 +71,7 @@ export function Dashboard({
   transactions,
   transactionsEvent,
   whatIfSquads,
+  luckMetrics,
 }: DashboardProps) {
   const [activeTab, setActiveTab] = useState('live')
 
@@ -105,6 +108,9 @@ export function Dashboard({
                 <Standings managers={managers} form={form} />
                 <SummerStandings standings={summerStandings} />
               </div>
+
+              {/* Luck Index */}
+              <LuckMetrics luckMetrics={luckMetrics} />
 
               {/* Head to Head matrix */}
               <HeadToHead entries={entries} h2h={h2h} />

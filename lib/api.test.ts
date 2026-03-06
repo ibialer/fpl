@@ -5,6 +5,7 @@ import {
   calculateStandingsFromGameweek,
   calculateTeamForm,
   calculateHeadToHead,
+  calculateLuckMetrics,
   getCurrentEvent,
   getPositionName,
   getTransactionsEvent,
@@ -497,5 +498,182 @@ describe('getTransactionsEvent', () => {
     }
 
     expect(getTransactionsEvent(currentEvent, deadlineInfo)).toBe(21)
+  })
+})
+
+describe('calculateLuckMetrics', () => {
+  const createSixTeamLeague = (matches: LeagueDetails['matches']): LeagueDetails => ({
+    league: {
+      id: 37265, name: 'Test League', admin_entry: 1, closed: false,
+      draft_dt: '2024-08-01T00:00:00Z', draft_status: 'completed', scoring: 'h',
+      start_event: 1, stop_event: 38, trades: 'y', transaction_mode: 'y', variety: 'h2h',
+    },
+    league_entries: [
+      { id: 1, entry_id: 100, entry_name: 'Team A', player_first_name: 'A', player_last_name: 'Player', short_name: 'TA', waiver_pick: 1 },
+      { id: 2, entry_id: 200, entry_name: 'Team B', player_first_name: 'B', player_last_name: 'Player', short_name: 'TB', waiver_pick: 2 },
+      { id: 3, entry_id: 300, entry_name: 'Team C', player_first_name: 'C', player_last_name: 'Player', short_name: 'TC', waiver_pick: 3 },
+      { id: 4, entry_id: 400, entry_name: 'Team D', player_first_name: 'D', player_last_name: 'Player', short_name: 'TD', waiver_pick: 4 },
+      { id: 5, entry_id: 500, entry_name: 'Team E', player_first_name: 'E', player_last_name: 'Player', short_name: 'TE', waiver_pick: 5 },
+      { id: 6, entry_id: 600, entry_name: 'Team F', player_first_name: 'F', player_last_name: 'Player', short_name: 'TF', waiver_pick: 6 },
+    ],
+    matches,
+    standings: [],
+  })
+
+  it('returns empty array when no finished matches', () => {
+    const league = createSixTeamLeague([])
+    expect(calculateLuckMetrics(league)).toEqual([])
+  })
+
+  it('calculates narrow wins correctly', () => {
+    // GW1: 3 matches, Team 1 wins by 3 (narrow), Team 3 wins by 20 (not narrow), Team 5 wins by 5 (narrow)
+    const league = createSixTeamLeague([
+      { event: 1, finished: true, started: true, league_entry_1: 1, league_entry_1_points: 53, league_entry_2: 2, league_entry_2_points: 50, winning_league_entry: 1, winning_method: 'points' },
+      { event: 1, finished: true, started: true, league_entry_1: 3, league_entry_1_points: 60, league_entry_2: 4, league_entry_2_points: 40, winning_league_entry: 3, winning_method: 'points' },
+      { event: 1, finished: true, started: true, league_entry_1: 5, league_entry_1_points: 45, league_entry_2: 6, league_entry_2_points: 40, winning_league_entry: 5, winning_method: 'points' },
+    ])
+
+    const metrics = calculateLuckMetrics(league)
+    const team1 = metrics.find((m) => m.entryId === 1)!
+    const team3 = metrics.find((m) => m.entryId === 3)!
+    const team5 = metrics.find((m) => m.entryId === 5)!
+
+    expect(team1.narrowWins).toBe(1)
+    expect(team3.narrowWins).toBe(0)
+    expect(team5.narrowWins).toBe(1)
+  })
+
+  it('calculates opponent average points', () => {
+    const league = createSixTeamLeague([
+      { event: 1, finished: true, started: true, league_entry_1: 1, league_entry_1_points: 50, league_entry_2: 2, league_entry_2_points: 40, winning_league_entry: 1, winning_method: 'points' },
+      { event: 1, finished: true, started: true, league_entry_1: 3, league_entry_1_points: 60, league_entry_2: 4, league_entry_2_points: 30, winning_league_entry: 3, winning_method: 'points' },
+      { event: 1, finished: true, started: true, league_entry_1: 5, league_entry_1_points: 55, league_entry_2: 6, league_entry_2_points: 45, winning_league_entry: 5, winning_method: 'points' },
+      { event: 2, finished: true, started: true, league_entry_1: 1, league_entry_1_points: 50, league_entry_2: 3, league_entry_2_points: 60, winning_league_entry: 3, winning_method: 'points' },
+      { event: 2, finished: true, started: true, league_entry_1: 2, league_entry_1_points: 35, league_entry_2: 5, league_entry_2_points: 55, winning_league_entry: 5, winning_method: 'points' },
+      { event: 2, finished: true, started: true, league_entry_1: 4, league_entry_1_points: 40, league_entry_2: 6, league_entry_2_points: 45, winning_league_entry: 6, winning_method: 'points' },
+    ])
+
+    const metrics = calculateLuckMetrics(league)
+    const team1 = metrics.find((m) => m.entryId === 1)!
+
+    // Team 1 faced Team 2 (40 pts) in GW1 and Team 3 (60 pts) in GW2
+    expect(team1.opponentAvgPoints).toBe(50) // (40 + 60) / 2
+  })
+
+  it('calculates lucky wins (won while ranked 4th-5th in GW)', () => {
+    // GW1 scores: Team 3=60, Team 1=50, Team 5=48, Team 6=45, Team 2=40, Team 4=30
+    // Rankings: 3=1st, 1=2nd, 5=3rd, 6=4th, 2=5th, 4=6th
+    // Team 6 (4th) beats Team 4 (6th) -> lucky win for Team 6
+    // Team 2 (5th) loses to Team 1 (2nd) -> no lucky win
+    const league = createSixTeamLeague([
+      { event: 1, finished: true, started: true, league_entry_1: 1, league_entry_1_points: 50, league_entry_2: 2, league_entry_2_points: 40, winning_league_entry: 1, winning_method: 'points' },
+      { event: 1, finished: true, started: true, league_entry_1: 3, league_entry_1_points: 60, league_entry_2: 4, league_entry_2_points: 30, winning_league_entry: 3, winning_method: 'points' },
+      { event: 1, finished: true, started: true, league_entry_1: 6, league_entry_1_points: 45, league_entry_2: 5, league_entry_2_points: 48, winning_league_entry: 5, winning_method: 'points' },
+    ])
+
+    const metrics = calculateLuckMetrics(league)
+    // No one ranked 4th-5th won (Team 6 ranked 4th lost, Team 2 ranked 5th lost)
+    expect(metrics.every((m) => m.luckyWins === 0)).toBe(true)
+  })
+
+  it('detects lucky win when 4th-ranked team wins', () => {
+    // GW1 scores: Team 3=60, Team 1=55, Team 5=50, Team 2=45, Team 4=40, Team 6=30
+    // Rankings: 3=1st, 1=2nd, 5=3rd, 2=4th, 4=5th, 6=6th
+    // Team 2 (4th, 45pts) vs Team 1 (2nd, 55pts) -> Team 1 wins, not lucky
+    // Now swap so Team 2 (4th) faces Team 6 (6th) and wins
+    const league = createSixTeamLeague([
+      { event: 1, finished: true, started: true, league_entry_1: 1, league_entry_1_points: 55, league_entry_2: 5, league_entry_2_points: 50, winning_league_entry: 1, winning_method: 'points' },
+      { event: 1, finished: true, started: true, league_entry_1: 3, league_entry_1_points: 60, league_entry_2: 4, league_entry_2_points: 40, winning_league_entry: 3, winning_method: 'points' },
+      { event: 1, finished: true, started: true, league_entry_1: 2, league_entry_1_points: 45, league_entry_2: 6, league_entry_2_points: 30, winning_league_entry: 2, winning_method: 'points' },
+    ])
+
+    const metrics = calculateLuckMetrics(league)
+    const team2 = metrics.find((m) => m.entryId === 2)!
+    // Team 2 ranked 4th (45 pts) and won -> lucky win
+    expect(team2.luckyWins).toBe(1)
+  })
+
+  it('calculates unlucky losses (lost while ranked top 3)', () => {
+    // GW1 scores: Team 3=60, Team 1=55, Team 2=50, Team 5=45, Team 4=40, Team 6=30
+    // Rankings: 3=1st, 1=2nd, 2=3rd, 5=4th, 4=5th, 6=6th
+    // Team 2 (3rd, 50pts) faces Team 3 (1st, 60pts) -> Team 2 loses = unlucky loss
+    const league = createSixTeamLeague([
+      { event: 1, finished: true, started: true, league_entry_1: 1, league_entry_1_points: 55, league_entry_2: 5, league_entry_2_points: 45, winning_league_entry: 1, winning_method: 'points' },
+      { event: 1, finished: true, started: true, league_entry_1: 3, league_entry_1_points: 60, league_entry_2: 2, league_entry_2_points: 50, winning_league_entry: 3, winning_method: 'points' },
+      { event: 1, finished: true, started: true, league_entry_1: 4, league_entry_1_points: 40, league_entry_2: 6, league_entry_2_points: 30, winning_league_entry: 4, winning_method: 'points' },
+    ])
+
+    const metrics = calculateLuckMetrics(league)
+    const team2 = metrics.find((m) => m.entryId === 2)!
+    expect(team2.unluckyLosses).toBe(1)
+
+    // Team 1 (2nd) won, so no unlucky loss
+    const team1 = metrics.find((m) => m.entryId === 1)!
+    expect(team1.unluckyLosses).toBe(0)
+  })
+
+  it('calculates expected wins and luck delta', () => {
+    // GW1 scores: Team 1=60, Team 2=50, Team 3=40, Team 4=30, Team 5=20, Team 6=10
+    // Team 1 (60) would beat all 5 opponents -> expected = 5/5 = 1.0
+    // Team 6 (10) would beat 0 opponents -> expected = 0/5 = 0.0
+    // Team 3 (40) would beat Team 4,5,6 (3/5) -> expected = 0.6
+    const league = createSixTeamLeague([
+      { event: 1, finished: true, started: true, league_entry_1: 1, league_entry_1_points: 60, league_entry_2: 2, league_entry_2_points: 50, winning_league_entry: 1, winning_method: 'points' },
+      { event: 1, finished: true, started: true, league_entry_1: 3, league_entry_1_points: 40, league_entry_2: 4, league_entry_2_points: 30, winning_league_entry: 3, winning_method: 'points' },
+      { event: 1, finished: true, started: true, league_entry_1: 5, league_entry_1_points: 20, league_entry_2: 6, league_entry_2_points: 10, winning_league_entry: 5, winning_method: 'points' },
+    ])
+
+    const metrics = calculateLuckMetrics(league)
+    const team1 = metrics.find((m) => m.entryId === 1)!
+    const team3 = metrics.find((m) => m.entryId === 3)!
+    const team6 = metrics.find((m) => m.entryId === 6)!
+
+    // Team 1: expected 1.0, actual 1 -> delta 0
+    expect(team1.expectedWins).toBe(1)
+    expect(team1.actualWins).toBe(1)
+    expect(team1.luckDelta).toBe(0)
+
+    // Team 3: expected 0.6, actual 1 -> delta 0.4
+    expect(team3.expectedWins).toBe(0.6)
+    expect(team3.actualWins).toBe(1)
+    expect(team3.luckDelta).toBe(0.4)
+
+    // Team 6: expected 0, actual 0 -> delta 0
+    expect(team6.expectedWins).toBe(0)
+    expect(team6.actualWins).toBe(0)
+    expect(team6.luckDelta).toBe(0)
+  })
+
+  it('ignores unfinished matches', () => {
+    const league = createSixTeamLeague([
+      { event: 1, finished: true, started: true, league_entry_1: 1, league_entry_1_points: 50, league_entry_2: 2, league_entry_2_points: 40, winning_league_entry: 1, winning_method: 'points' },
+      { event: 1, finished: true, started: true, league_entry_1: 3, league_entry_1_points: 60, league_entry_2: 4, league_entry_2_points: 30, winning_league_entry: 3, winning_method: 'points' },
+      { event: 1, finished: true, started: true, league_entry_1: 5, league_entry_1_points: 55, league_entry_2: 6, league_entry_2_points: 45, winning_league_entry: 5, winning_method: 'points' },
+      { event: 2, finished: false, started: true, league_entry_1: 1, league_entry_1_points: 30, league_entry_2: 3, league_entry_2_points: 60, winning_league_entry: null, winning_method: null },
+      { event: 2, finished: false, started: true, league_entry_1: 2, league_entry_1_points: 35, league_entry_2: 5, league_entry_2_points: 55, winning_league_entry: null, winning_method: null },
+      { event: 2, finished: false, started: true, league_entry_1: 4, league_entry_1_points: 40, league_entry_2: 6, league_entry_2_points: 45, winning_league_entry: null, winning_method: null },
+    ])
+
+    const metrics = calculateLuckMetrics(league)
+    const team1 = metrics.find((m) => m.entryId === 1)!
+    // Only GW1 should count
+    expect(team1.actualWins).toBe(1)
+  })
+
+  it('handles draws in expected wins calculation', () => {
+    // All teams score 50 -> each team would draw all opponents -> expected = 0.5
+    const league = createSixTeamLeague([
+      { event: 1, finished: true, started: true, league_entry_1: 1, league_entry_1_points: 50, league_entry_2: 2, league_entry_2_points: 50, winning_league_entry: null, winning_method: null },
+      { event: 1, finished: true, started: true, league_entry_1: 3, league_entry_1_points: 50, league_entry_2: 4, league_entry_2_points: 50, winning_league_entry: null, winning_method: null },
+      { event: 1, finished: true, started: true, league_entry_1: 5, league_entry_1_points: 50, league_entry_2: 6, league_entry_2_points: 50, winning_league_entry: null, winning_method: null },
+    ])
+
+    const metrics = calculateLuckMetrics(league)
+    // Everyone draws their match, expected = 0.5 (5 draws / 5 opponents * 0.5 each)
+    metrics.forEach((m) => {
+      expect(m.expectedWins).toBe(0.5)
+      expect(m.actualWins).toBe(0)
+      expect(m.luckDelta).toBe(-0.5)
+    })
   })
 })

@@ -13,6 +13,7 @@ import {
   calculateStandingsFromGameweek,
   calculateTeamForm,
   calculateHeadToHead,
+  calculateLuckMetrics,
   fetchAllPointsBreakdown,
   fetchDraftChoices,
   processWhatIfSquads,
@@ -78,7 +79,8 @@ export default async function Home() {
       }
     })
 
-    // Calculate form and H2H
+    // Calculate form, H2H, and luck metrics
+    const luckMetrics = calculateLuckMetrics(leagueDetails)
     const form = Object.fromEntries(calculateTeamForm(leagueDetails))
     const h2h = Object.fromEntries(
       Array.from(calculateHeadToHead(leagueDetails).entries()).map(([k, v]) => [k, Object.fromEntries(v)])
@@ -120,6 +122,7 @@ export default async function Home() {
           transactions={recentTransactions}
           transactionsEvent={transactionsEvent}
           whatIfSquads={whatIfSquads}
+          luckMetrics={luckMetrics}
         />
 
         <RefreshButton />

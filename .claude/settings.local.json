@@ -18,7 +18,13 @@
       "Bash(git push:*)",
       "Bash(git pull:*)",
       "Bash(git checkout:*)",
-      "Bash(npx vercel --yes)"
+      "Bash(npx vercel --yes)",
+      "Bash(npx tsc:*)",
+      "Bash(npx jest:*)",
+      "Bash(npx:*)",
+      "Bash(git:*)",
+      "Bash(touch:*)",
+      "Bash(xattr:*)"
     ]
   }
 }

@@ -1,0 +1,176 @@
+import { LuckMetricsData } from '@/lib/api'
+
+interface LuckMetricsProps {
+  luckMetrics: LuckMetricsData[]
+}
+
+function LuckBar({ value, max, color }: { value: number; max: number; color: string }) {
+  const pct = max > 0 ? (value / max) * 100 : 0
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex-1 h-2 rounded-full bg-[var(--card-border)] overflow-hidden">
+        <div
+          className={`h-full rounded-full ${color}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
+function DeltaBadge({ delta }: { delta: number }) {
+  if (delta === 0) {
+    return <span className="text-xs text-[var(--muted)]">0</span>
+  }
+
+  const isPositive = delta > 0
+  return (
+    <span
+      className={`text-xs font-bold ${
+        isPositive ? 'text-[var(--success)]' : 'text-[var(--danger)]'
+      }`}
+    >
+      {isPositive ? '+' : ''}{delta}
+    </span>
+  )
+}
+
+// Mobile card view
+function MobileLuckCard({ data, maxNarrowWins }: { data: LuckMetricsData; maxNarrowWins: number }) {
+  return (
+    <div className="p-3 border-b border-[var(--card-border)] last:border-b-0">
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <div className="font-medium text-sm">{data.teamName}</div>
+          <div className="text-xs text-[var(--muted)]">{data.managerName}</div>
+        </div>
+        <div className="text-right">
+          <div className="text-[10px] text-[var(--muted)] uppercase">Luck</div>
+          <DeltaBadge delta={data.luckDelta} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+        <div className="flex justify-between">
+          <span className="text-[var(--muted)]">Narrow Wins</span>
+          <span className="font-medium">{data.narrowWins}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-[var(--muted)]">Opp Avg Pts</span>
+          <span className="font-medium">{data.opponentAvgPoints}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-[var(--muted)]">Lucky Wins</span>
+          <span className="font-medium text-[var(--success)]">{data.luckyWins}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-[var(--muted)]">Unlucky Losses</span>
+          <span className="font-medium text-[var(--danger)]">{data.unluckyLosses}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-[var(--muted)]">Expected W</span>
+          <span className="font-medium">{data.expectedWins}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-[var(--muted)]">Actual W</span>
+          <span className="font-medium">{data.actualWins}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function LuckMetrics({ luckMetrics }: LuckMetricsProps) {
+  if (luckMetrics.length === 0) {
+    return (
+      <section className="bg-[var(--card)] rounded-xl border border-[var(--card-border)] overflow-hidden shadow-[var(--card-shadow)]">
+        <header className="px-4 py-3 border-b border-[var(--card-border)] bg-[var(--card-elevated)]">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
+            Luck Index
+          </h2>
+        </header>
+        <div className="p-8 text-center">
+          <h3 className="text-sm font-semibold mb-1">No data yet</h3>
+          <p className="text-[var(--muted)] text-sm">Luck metrics will appear after matches are played</p>
+        </div>
+      </section>
+    )
+  }
+
+  // Sort by luck delta descending (luckiest first)
+  const sorted = [...luckMetrics].sort((a, b) => b.luckDelta - a.luckDelta)
+  const maxNarrowWins = Math.max(...sorted.map((d) => d.narrowWins))
+
+  return (
+    <section className="bg-[var(--card)] rounded-xl border border-[var(--card-border)] overflow-hidden shadow-[var(--card-shadow)]">
+      <header className="px-4 py-3 border-b border-[var(--card-border)] bg-[var(--card-elevated)]">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
+          Luck Index
+        </h2>
+      </header>
+
+      {/* Mobile view */}
+      <div className="sm:hidden">
+        {sorted.map((data) => (
+          <MobileLuckCard key={data.entryId} data={data} maxNarrowWins={maxNarrowWins} />
+        ))}
+      </div>
+
+      {/* Desktop table view */}
+      <div className="hidden sm:block overflow-x-auto custom-scrollbar">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-[var(--muted)] text-xs uppercase border-b border-[var(--card-border)]">
+              <th className="text-left px-4 py-3 font-medium">Team</th>
+              <th className="text-center px-3 py-3 font-medium" title="Wins by 5 points or less">Narrow W</th>
+              <th className="text-center px-3 py-3 font-medium" title="Average points scored by opponents">Opp Avg</th>
+              <th className="text-center px-3 py-3 font-medium" title="Won while placing 4th-5th in GW points">Lucky W</th>
+              <th className="text-center px-3 py-3 font-medium" title="Lost while placing top 3 in GW points">Unlucky L</th>
+              <th className="text-center px-3 py-3 font-medium" title="Expected wins based on points vs all opponents">Exp W</th>
+              <th className="text-center px-3 py-3 font-medium">Actual W</th>
+              <th className="text-center px-3 py-3 font-medium" title="Actual wins minus expected wins">Luck</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((data, i) => (
+              <tr
+                key={data.entryId}
+                className={`border-b border-[var(--card-border)] last:border-b-0 row-hover ${
+                  i === 0 ? 'bg-[var(--success-muted)]' : i === sorted.length - 1 ? 'bg-[var(--danger-muted)]' : ''
+                }`}
+              >
+                <td className="px-4 py-3">
+                  <div className="font-medium">{data.teamName}</div>
+                  <div className="text-xs text-[var(--muted)]">{data.managerName}</div>
+                </td>
+                <td className="text-center px-3 py-3 tabular-nums">{data.narrowWins}</td>
+                <td className="text-center px-3 py-3 tabular-nums">{data.opponentAvgPoints}</td>
+                <td className="text-center px-3 py-3 tabular-nums text-[var(--success)] font-medium">
+                  {data.luckyWins}
+                </td>
+                <td className="text-center px-3 py-3 tabular-nums text-[var(--danger)] font-medium">
+                  {data.unluckyLosses}
+                </td>
+                <td className="text-center px-3 py-3 tabular-nums">{data.expectedWins}</td>
+                <td className="text-center px-3 py-3 tabular-nums">{data.actualWins}</td>
+                <td className="text-center px-3 py-3">
+                  <DeltaBadge delta={data.luckDelta} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Legend */}
+      <footer className="px-4 py-2 border-t border-[var(--card-border)] bg-[var(--card-elevated)]">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-[var(--muted)]">
+          <span>Narrow W = Won by 5 pts or less</span>
+          <span>Lucky W = Won while 4th-5th in GW</span>
+          <span>Unlucky L = Lost while top 3 in GW</span>
+          <span>Luck = Actual W - Expected W</span>
+        </div>
+      </footer>
+    </section>
+  )
+}

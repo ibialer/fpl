@@ -718,3 +718,149 @@ export function processWhatIfSquads(
 
   return squads
 }
+
+// Luck metrics for each team
+export interface LuckMetricsData {
+  entryId: number
+  teamName: string
+  managerName: string
+  narrowWins: number
+  opponentAvgPoints: number
+  luckyWins: number
+  unluckyLosses: number
+  expectedWins: number
+  actualWins: number
+  luckDelta: number
+}
+
+export function calculateLuckMetrics(
+  leagueDetails: LeagueDetails
+): LuckMetricsData[] {
+  const entries = leagueDetails.league_entries
+  const finishedMatches = leagueDetails.matches.filter((m) => m.finished)
+
+  if (finishedMatches.length === 0) return []
+
+  // Group matches by event for GW ranking calculations
+  const matchesByEvent = new Map<number, typeof finishedMatches>()
+  finishedMatches.forEach((m) => {
+    const existing = matchesByEvent.get(m.event) || []
+    existing.push(m)
+    matchesByEvent.set(m.event, existing)
+  })
+
+  // For each GW, compute each team's points and rank
+  // Also compute expected wins (how many of the 5 opponents would they beat)
+  const teamStats = new Map<
+    number,
+    {
+      narrowWins: number
+      opponentPointsTotal: number
+      matchesPlayed: number
+      luckyWins: number
+      unluckyLosses: number
+      expectedWins: number
+      actualWins: number
+    }
+  >()
+
+  entries.forEach((e) => {
+    teamStats.set(e.id, {
+      narrowWins: 0,
+      opponentPointsTotal: 0,
+      matchesPlayed: 0,
+      luckyWins: 0,
+      unluckyLosses: 0,
+      expectedWins: 0,
+      actualWins: 0,
+    })
+  })
+
+  matchesByEvent.forEach((matches) => {
+    // Get all team scores for this GW
+    const teamScores = new Map<number, number>()
+    matches.forEach((m) => {
+      teamScores.set(m.league_entry_1, m.league_entry_1_points)
+      teamScores.set(m.league_entry_2, m.league_entry_2_points)
+    })
+
+    // Rank teams by points this GW (1 = highest)
+    const sortedScores = [...teamScores.entries()].sort((a, b) => b[1] - a[1])
+    const teamRank = new Map<number, number>()
+    sortedScores.forEach(([id], i) => teamRank.set(id, i + 1))
+
+    // Calculate expected wins for each team
+    const allScores = sortedScores.map(([, pts]) => pts)
+    teamScores.forEach((pts, teamId) => {
+      const stats = teamStats.get(teamId)!
+      const opponents = allScores.filter((_, i) => sortedScores[i][0] !== teamId)
+      const wouldBeat = opponents.filter((opPts) => pts > opPts).length
+      const wouldDraw = opponents.filter((opPts) => pts === opPts).length
+      stats.expectedWins += (wouldBeat + wouldDraw * 0.5) / opponents.length
+    })
+
+    // Process each match
+    matches.forEach((m) => {
+      const team1Stats = teamStats.get(m.league_entry_1)!
+      const team2Stats = teamStats.get(m.league_entry_2)!
+
+      // Track opponent points
+      team1Stats.opponentPointsTotal += m.league_entry_2_points
+      team1Stats.matchesPlayed++
+      team2Stats.opponentPointsTotal += m.league_entry_1_points
+      team2Stats.matchesPlayed++
+
+      const diff = Math.abs(m.league_entry_1_points - m.league_entry_2_points)
+      const team1Won = m.league_entry_1_points > m.league_entry_2_points
+      const team2Won = m.league_entry_2_points > m.league_entry_1_points
+
+      // Narrow wins (<=5 pts difference)
+      if (team1Won && diff <= 5) team1Stats.narrowWins++
+      if (team2Won && diff <= 5) team2Stats.narrowWins++
+
+      // Actual wins
+      if (team1Won) team1Stats.actualWins++
+      if (team2Won) team2Stats.actualWins++
+
+      // Lucky wins: won but ranked 4th or 5th in GW
+      const team1Rank = teamRank.get(m.league_entry_1)!
+      const team2Rank = teamRank.get(m.league_entry_2)!
+
+      if (team1Won && (team1Rank === 4 || team1Rank === 5)) {
+        team1Stats.luckyWins++
+      }
+      if (team2Won && (team2Rank === 4 || team2Rank === 5)) {
+        team2Stats.luckyWins++
+      }
+
+      // Unlucky losses: lost but ranked top 3 in GW
+      const team1Lost = m.league_entry_2_points > m.league_entry_1_points
+      const team2Lost = m.league_entry_1_points > m.league_entry_2_points
+
+      if (team1Lost && team1Rank <= 3) {
+        team1Stats.unluckyLosses++
+      }
+      if (team2Lost && team2Rank <= 3) {
+        team2Stats.unluckyLosses++
+      }
+    })
+  })
+
+  return entries.map((e) => {
+    const stats = teamStats.get(e.id)!
+    return {
+      entryId: e.id,
+      teamName: e.entry_name,
+      managerName: `${e.player_first_name} ${e.player_last_name}`,
+      narrowWins: stats.narrowWins,
+      opponentAvgPoints: stats.matchesPlayed > 0
+        ? Math.round((stats.opponentPointsTotal / stats.matchesPlayed) * 10) / 10
+        : 0,
+      luckyWins: stats.luckyWins,
+      unluckyLosses: stats.unluckyLosses,
+      expectedWins: Math.round(stats.expectedWins * 10) / 10,
+      actualWins: stats.actualWins,
+      luckDelta: Math.round((stats.actualWins - stats.expectedWins) * 10) / 10,
+    }
+  })
+}

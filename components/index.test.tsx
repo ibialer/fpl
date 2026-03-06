@@ -27,6 +27,7 @@ import { Results } from './Results'
 import { UpcomingFixtures } from './UpcomingFixtures'
 import { WhatIf } from './WhatIf'
 import { Fixtures } from './Fixtures'
+import { LuckMetrics } from './LuckMetrics'
 
 // ===== HEADER =====
 describe('Header', () => {
@@ -316,6 +317,55 @@ describe('Fixtures', () => {
     // Click the Midfielder's info button - DC should show
     fireEvent.click(infoButtons[1])
     expect(container.textContent).toContain('DC:3')
+  })
+})
+
+// ===== LUCK METRICS =====
+describe('LuckMetrics', () => {
+  const mockData = [
+    {
+      entryId: 1, teamName: 'Lucky Team', managerName: 'John Doe',
+      narrowWins: 3, opponentAvgPoints: 42.5, luckyWins: 2, unluckyLosses: 0,
+      expectedWins: 8.2, actualWins: 11, luckDelta: 2.8,
+    },
+    {
+      entryId: 2, teamName: 'Unlucky Team', managerName: 'Jane Smith',
+      narrowWins: 1, opponentAvgPoints: 55.3, luckyWins: 0, unluckyLosses: 3,
+      expectedWins: 10.5, actualWins: 7, luckDelta: -3.5,
+    },
+  ]
+
+  it('shows empty state when no data', () => {
+    render(<LuckMetrics luckMetrics={[]} />)
+    expect(screen.getByText('No data yet')).toBeInTheDocument()
+  })
+
+  it('renders luck metrics table with team data', () => {
+    render(<LuckMetrics luckMetrics={mockData} />)
+    expect(screen.getByText('Luck Index')).toBeInTheDocument()
+    // Both mobile and desktop render team names
+    expect(screen.getAllByText('Lucky Team').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Unlucky Team').length).toBeGreaterThan(0)
+  })
+
+  it('sorts by luck delta descending (luckiest first)', () => {
+    const { container } = render(<LuckMetrics luckMetrics={mockData} />)
+    const teamNames = container.querySelectorAll('.font-medium')
+    // First team should be "Lucky Team" (delta +2.8) before "Unlucky Team" (delta -3.5)
+    const textContents = Array.from(teamNames).map((el) => el.textContent)
+    const luckyIdx = textContents.indexOf('Lucky Team')
+    const unluckyIdx = textContents.indexOf('Unlucky Team')
+    expect(luckyIdx).toBeLessThan(unluckyIdx)
+  })
+
+  it('displays positive delta with + prefix', () => {
+    const { container } = render(<LuckMetrics luckMetrics={mockData} />)
+    expect(container.textContent).toContain('+2.8')
+  })
+
+  it('displays negative delta', () => {
+    const { container } = render(<LuckMetrics luckMetrics={mockData} />)
+    expect(container.textContent).toContain('-3.5')
   })
 })
 
