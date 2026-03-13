@@ -4,6 +4,12 @@ interface LuckMetricsProps {
   luckMetrics: LuckMetricsData[]
 }
 
+function rowHighlightClass(index: number, total: number): string {
+  if (index === 0) return 'bg-[var(--success-muted)]'
+  if (index === total - 1) return 'bg-[var(--danger-muted)]'
+  return ''
+}
+
 function LuckIndexBadge({ value }: { value: number }) {
   if (value === 0) {
     return <span className="text-xs text-[var(--muted)]">0</span>
@@ -120,9 +126,7 @@ export function LuckMetrics({ luckMetrics }: LuckMetricsProps) {
             {sorted.map((data, i) => (
               <tr
                 key={data.entryId}
-                className={`border-b border-[var(--card-border)] last:border-b-0 row-hover ${
-                  i === 0 ? 'bg-[var(--success-muted)]' : i === sorted.length - 1 ? 'bg-[var(--danger-muted)]' : ''
-                }`}
+                className={`border-b border-[var(--card-border)] last:border-b-0 row-hover ${rowHighlightClass(i, sorted.length)}`}
               >
                 <td className="px-4 py-3">
                   <div className="font-medium">{data.teamName}</div>

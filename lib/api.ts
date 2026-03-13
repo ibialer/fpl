@@ -21,7 +21,7 @@ const LEAGUE_ID = 37265
 
 // For server-side fetching, use the FPL API directly
 // For client-side, use our proxy
-const getBaseUrl = () => {
+function getBaseUrl(): string {
   if (typeof window === 'undefined') {
     return 'https://draft.premierleague.com/api'
   }
@@ -841,13 +841,10 @@ export function calculateLuckMetrics(
       }
 
       // Unlucky losses: lost but ranked top 3 in GW
-      const team1Lost = m.league_entry_2_points > m.league_entry_1_points
-      const team2Lost = m.league_entry_1_points > m.league_entry_2_points
-
-      if (team1Lost && team1Rank <= 3) {
+      if (team2Won && team1Rank <= 3) {
         team1Stats.unluckyLosses++
       }
-      if (team2Lost && team2Rank <= 3) {
+      if (team1Won && team2Rank <= 3) {
         team2Stats.unluckyLosses++
       }
     })
