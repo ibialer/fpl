@@ -397,6 +397,195 @@ describe('WhatIf', () => {
   })
 })
 
+// ===== PLAYER STATS =====
+import { PositionBadge, StatIcons, GameStatIcons, PlayerDetailPopover } from './PlayerStats'
+import { PlayerPoints, PerGameStat } from '@/lib/types'
+
+const createMockPlayer = (overrides?: Partial<PlayerPoints>): PlayerPoints => ({
+  name: 'TestPlayer', points: 5, position: 1, isBenched: false,
+  positionName: 'MID', teamShortName: 'ARS', opponentShortName: 'CHE',
+  isHome: true, opponents: [{ opponentShortName: 'CHE', isHome: true, started: true }],
+  goals: 0, assists: 0, cleanSheet: false, bonus: 0, yellowCards: 0,
+  redCards: 0, minutesPlayed: 90, hasPlayed: true, defensiveContribution: 0,
+  perGameStats: [],
+  ...overrides,
+})
+
+const createMockGameStat = (overrides?: Partial<PerGameStat>): PerGameStat => ({
+  fixtureId: 1, opponentShortName: 'CHE', isHome: true,
+  minutes: 90, goals: 0, assists: 0, cleanSheet: false,
+  yellowCards: 0, redCards: 0, bonus: 0, saves: 0,
+  penaltiesSaved: 0, penaltiesMissed: 0, ownGoals: 0,
+  goalsConceeded: 0, defensiveContribution: 0, points: 5,
+  ...overrides,
+})
+
+describe('PositionBadge', () => {
+  it('renders position text with correct class', () => {
+    const { container } = render(<PositionBadge position="GK" />)
+    const badge = container.querySelector('.pos-badge')
+    expect(badge).toBeInTheDocument()
+    expect(badge?.textContent).toBe('GK')
+    expect(badge?.className).toContain('pos-gk')
+  })
+
+  it('renders each position with its CSS class', () => {
+    const positions = ['GK', 'DEF', 'MID', 'FWD']
+    const classes = ['pos-gk', 'pos-def', 'pos-mid', 'pos-fwd']
+    positions.forEach((pos, i) => {
+      const { container } = render(<PositionBadge position={pos} />)
+      expect(container.querySelector(`.${classes[i]}`)).toBeInTheDocument()
+      cleanup()
+    })
+  })
+})
+
+describe('StatIcons', () => {
+  it('renders goal icons for each goal scored', () => {
+    const player = createMockPlayer({ goals: 2 })
+    const { container } = render(<StatIcons player={player} />)
+    const goals = container.querySelectorAll('[title="Goal"]')
+    expect(goals).toHaveLength(2)
+  })
+
+  it('renders assist icons', () => {
+    const player = createMockPlayer({ assists: 1 })
+    const { container } = render(<StatIcons player={player} />)
+    expect(container.querySelector('[title="Assist"]')).toBeInTheDocument()
+  })
+
+  it('renders clean sheet for GK, DEF, MID but not FWD', () => {
+    for (const pos of ['GK', 'DEF', 'MID']) {
+      const { container } = render(<StatIcons player={createMockPlayer({ cleanSheet: true, positionName: pos })} />)
+      expect(container.querySelector('[title="Clean sheet"]')).toBeInTheDocument()
+      cleanup()
+    }
+    const { container } = render(<StatIcons player={createMockPlayer({ cleanSheet: true, positionName: 'FWD' })} />)
+    expect(container.querySelector('[title="Clean sheet"]')).not.toBeInTheDocument()
+  })
+
+  it('renders top scorer star when isTopScorer and points > 0', () => {
+    const player = createMockPlayer({ points: 10 })
+    render(<StatIcons player={player} isTopScorer />)
+    expect(screen.getByLabelText('Top scorer')).toBeInTheDocument()
+  })
+
+  it('returns null when no stat icons to show', () => {
+    const player = createMockPlayer()
+    const { container } = render(<StatIcons player={player} />)
+    expect(container.innerHTML).toBe('')
+  })
+
+  it('renders red card icons', () => {
+    const player = createMockPlayer({ redCards: 1 })
+    const { container } = render(<StatIcons player={player} />)
+    expect(container.querySelector('[title="Red card"]')).toBeInTheDocument()
+  })
+})
+
+describe('GameStatIcons', () => {
+  it('renders goal and assist icons', () => {
+    const game = createMockGameStat({ goals: 1, assists: 2 })
+    const { container } = render(<GameStatIcons game={game} positionName="MID" />)
+    expect(container.querySelectorAll('[title="Goal"]')).toHaveLength(1)
+    expect(container.querySelectorAll('[title="Assist"]')).toHaveLength(2)
+  })
+
+  it('shows saves badge for GK with 3+ saves', () => {
+    const game = createMockGameStat({ saves: 4 })
+    const { container } = render(<GameStatIcons game={game} positionName="GK" />)
+    expect(container.textContent).toContain('S:4')
+  })
+
+  it('does not show saves badge for non-GK', () => {
+    const game = createMockGameStat({ saves: 4 })
+    const { container } = render(<GameStatIcons game={game} positionName="DEF" />)
+    expect(container.textContent).not.toContain('S:4')
+  })
+
+  it('shows goals conceded for GK/DEF with 2+', () => {
+    const game = createMockGameStat({ goalsConceeded: 3 })
+    const { container } = render(<GameStatIcons game={game} positionName="DEF" />)
+    expect(container.textContent).toContain('GC:3')
+  })
+
+  it('shows DC for DEF/MID with positive value', () => {
+    const game = createMockGameStat({ defensiveContribution: 5 })
+    const { container } = render(<GameStatIcons game={game} positionName="DEF" />)
+    expect(container.textContent).toContain('DC:5')
+  })
+
+  it('shows own goal and penalty missed icons', () => {
+    const game = createMockGameStat({ ownGoals: 1, penaltiesMissed: 1 })
+    const { container } = render(<GameStatIcons game={game} positionName="FWD" />)
+    expect(container.querySelector('[title="Own goal"]')).toBeInTheDocument()
+    expect(container.querySelector('[title="Penalty missed"]')).toBeInTheDocument()
+  })
+
+  it('returns null when no stats to display', () => {
+    const game = createMockGameStat()
+    const { container } = render(<GameStatIcons game={game} positionName="FWD" />)
+    expect(container.innerHTML).toBe('')
+  })
+})
+
+describe('PlayerDetailPopover', () => {
+  it('returns null for player that has not played', () => {
+    const player = createMockPlayer({ hasPlayed: false, perGameStats: [] })
+    const { container } = render(<PlayerDetailPopover player={player} />)
+    expect(container.innerHTML).toBe('')
+  })
+
+  it('renders info button for player that has played', () => {
+    const player = createMockPlayer({ hasPlayed: true })
+    render(<PlayerDetailPopover player={player} />)
+    expect(screen.getByTitle('View details')).toBeInTheDocument()
+  })
+
+  it('opens popover on click showing per-game stats', () => {
+    const player = createMockPlayer({
+      perGameStats: [createMockGameStat({ opponentShortName: 'LIV', points: 8, minutes: 90 })],
+    })
+    const { container } = render(<PlayerDetailPopover player={player} />)
+    fireEvent.click(screen.getByTitle('View details'))
+    expect(container.textContent).toContain('LIV')
+    expect(container.textContent).toContain('8pts')
+  })
+
+  it('closes popover on outside click', () => {
+    const player = createMockPlayer({
+      perGameStats: [createMockGameStat({ opponentShortName: 'LIV', points: 8 })],
+    })
+    const { container } = render(<div><div data-testid="outside">outside</div><PlayerDetailPopover player={player} /></div>)
+    fireEvent.click(screen.getByTitle('View details'))
+    expect(container.textContent).toContain('8pts')
+    // Click outside to close
+    fireEvent.mouseDown(screen.getByTestId('outside'))
+    expect(container.textContent).not.toContain('8pts')
+  })
+})
+
+// ===== REFRESH BUTTON =====
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+}))
+
+import { RefreshButton } from './RefreshButton'
+
+describe('RefreshButton', () => {
+  it('renders with refresh aria-label', () => {
+    render(<RefreshButton />)
+    expect(screen.getByLabelText('Refresh data')).toBeInTheDocument()
+  })
+
+  it('disables button while refreshing', () => {
+    render(<RefreshButton />)
+    const button = screen.getByLabelText('Refresh data')
+    fireEvent.click(button)
+    expect(button).toBeDisabled()
+  })
+})
+
 // ===== PL MATCHES (computeBpsStats) =====
 import { computeBpsStats } from './PLMatches'
 import { PLFixturePlayer } from '@/lib/types'

@@ -1,7 +1,10 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   processTransactions,
   processFixtures,
+  processAllMatches,
+  processManagersWithSquads,
+  processWhatIfSquads,
   calculateStandingsFromGameweek,
   calculateTeamForm,
   calculateHeadToHead,
@@ -9,12 +12,15 @@ import {
   getCurrentEvent,
   getPositionName,
   getTransactionsEvent,
+  getDeadlineInfo,
 } from './api'
 import {
   LeagueDetails,
   TransactionsResponse,
   BootstrapStatic,
   DeadlineInfo,
+  ElementStatusResponse,
+  DraftChoice,
 } from './types'
 
 // Mock data factories
@@ -713,5 +719,200 @@ describe('calculateLuckMetrics', () => {
     // Both drew, so both should have draws = 1
     expect(team3.draws).toBe(1)
     expect(team4.draws).toBe(1)
+  })
+})
+
+describe('processAllMatches', () => {
+  it('maps all matches to fixture with names', () => {
+    const leagueDetails = createMockLeagueDetails({
+      matches: [
+        { event: 1, finished: true, started: true, league_entry_1: 1, league_entry_1_points: 50, league_entry_2: 2, league_entry_2_points: 40, winning_league_entry: 1, winning_method: 'points' },
+        { event: 2, finished: false, started: false, league_entry_1: 2, league_entry_1_points: 0, league_entry_2: 1, league_entry_2_points: 0, winning_league_entry: null, winning_method: null },
+      ],
+    })
+
+    const result = processAllMatches(leagueDetails)
+    expect(result).toHaveLength(2)
+    expect(result[0].team1Name).toBe('Team A')
+    expect(result[0].team2Name).toBe('Team B')
+    expect(result[0].winner).toBe('Team A')
+    expect(result[1].team1Name).toBe('Team B')
+    expect(result[1].winner).toBeNull()
+  })
+
+  it('returns Unknown for missing entries', () => {
+    const leagueDetails = createMockLeagueDetails({
+      matches: [
+        { event: 1, finished: true, started: true, league_entry_1: 99, league_entry_1_points: 50, league_entry_2: 2, league_entry_2_points: 40, winning_league_entry: 99, winning_method: 'points' },
+      ],
+    })
+
+    const result = processAllMatches(leagueDetails)
+    expect(result[0].team1Name).toBe('Unknown')
+    expect(result[0].team1PlayerName).toBe('Unknown')
+  })
+})
+
+describe('processManagersWithSquads', () => {
+  it('maps entries with standings and owned players sorted by position', () => {
+    const leagueDetails = createMockLeagueDetails()
+    const bootstrap = createMockBootstrapStatic()
+    const elementStatus: ElementStatusResponse = {
+      element_status: [
+        { element: 2, in_accepted_trade: false, owner: 100, status: 'o' }, // Haaland (FWD, type 4) owned by entry 100
+        { element: 1, in_accepted_trade: false, owner: 100, status: 'o' }, // Salah (MID, type 3) owned by entry 100
+      ],
+    }
+
+    const result = processManagersWithSquads(leagueDetails, elementStatus, bootstrap)
+
+    expect(result).toHaveLength(2)
+    expect(result[0].entry.entry_name).toBe('Team A')
+    expect(result[0].standing.rank).toBe(1)
+    // Squad should be sorted by element_type: MID (3) before FWD (4)
+    expect(result[0].squad).toHaveLength(2)
+    expect(result[0].squad[0].web_name).toBe('Salah')
+    expect(result[0].squad[1].web_name).toBe('Haaland')
+    // Team B has no players
+    expect(result[1].squad).toHaveLength(0)
+  })
+
+  it('handles entries with no owned players', () => {
+    const leagueDetails = createMockLeagueDetails()
+    const bootstrap = createMockBootstrapStatic()
+    const elementStatus: ElementStatusResponse = {
+      element_status: [],
+    }
+
+    const result = processManagersWithSquads(leagueDetails, elementStatus, bootstrap)
+    expect(result[0].squad).toHaveLength(0)
+    expect(result[1].squad).toHaveLength(0)
+  })
+})
+
+describe('processWhatIfSquads', () => {
+  it('builds squads from draft choices sorted by total points', () => {
+    const leagueDetails = createMockLeagueDetails()
+    const bootstrap = createMockBootstrapStatic()
+    const draftChoices: DraftChoice[] = [
+      { id: 1, element: 1, entry: 100, entry_name: 'Team A', player_first_name: 'John', player_last_name: 'Doe', round: 1, pick: 1, index: 0 },
+      { id: 2, element: 2, entry: 100, entry_name: 'Team A', player_first_name: 'John', player_last_name: 'Doe', round: 2, pick: 2, index: 1 },
+      { id: 3, element: 1, entry: 200, entry_name: 'Team B', player_first_name: 'Jane', player_last_name: 'Smith', round: 1, pick: 2, index: 2 },
+    ]
+
+    const result = processWhatIfSquads(draftChoices, bootstrap, leagueDetails)
+
+    expect(result).toHaveLength(2)
+    // Team A has Salah (100) + Haaland (120) = 220
+    expect(result[0].totalPoints).toBe(220)
+    expect(result[0].teamName).toBe('Team A')
+    expect(result[0].players).toHaveLength(2)
+    expect(result[0].players[0].draftRound).toBe(1)
+    expect(result[0].players[1].draftRound).toBe(2)
+    // Team B has only Salah (100)
+    expect(result[1].totalPoints).toBe(100)
+  })
+
+  it('returns empty array when no draft choices', () => {
+    const leagueDetails = createMockLeagueDetails()
+    const bootstrap = createMockBootstrapStatic()
+
+    const result = processWhatIfSquads([], bootstrap, leagueDetails)
+    expect(result).toEqual([])
+  })
+
+  it('handles unknown players gracefully', () => {
+    const leagueDetails = createMockLeagueDetails()
+    const bootstrap = createMockBootstrapStatic()
+    const draftChoices: DraftChoice[] = [
+      { id: 1, element: 999, entry: 100, entry_name: 'Team A', player_first_name: 'John', player_last_name: 'Doe', round: 1, pick: 1, index: 0 },
+    ]
+
+    const result = processWhatIfSquads(draftChoices, bootstrap, leagueDetails)
+    expect(result[0].players[0].name).toBe('Unknown')
+    expect(result[0].players[0].positionName).toBe('UNK')
+    expect(result[0].players[0].totalPoints).toBe(0)
+  })
+})
+
+describe('getDeadlineInfo', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('returns next event with future deadline', () => {
+    const futureDate = new Date('2024-01-15T12:00:00Z')
+    vi.setSystemTime(new Date('2024-01-10T12:00:00Z'))
+
+    const bootstrap: BootstrapStatic = {
+      ...createMockBootstrapStatic(),
+      events: {
+        current: 20,
+        data: [
+          { id: 20, name: 'Gameweek 20', deadline_time: '2024-01-05T00:00:00Z', finished: true, is_current: false, is_next: false },
+          { id: 21, name: 'Gameweek 21', deadline_time: futureDate.toISOString(), finished: false, is_current: true, is_next: false },
+        ],
+      },
+    }
+
+    const result = getDeadlineInfo(bootstrap)
+    expect(result.nextEvent).toBe(21)
+    expect(result.lineupDeadline).toBe(futureDate.toISOString())
+    expect(result.waiverDeadline).not.toBeNull()
+  })
+
+  it('sets waiver deadline 24 hours before lineup deadline', () => {
+    vi.setSystemTime(new Date('2024-01-10T12:00:00Z'))
+    const deadline = new Date('2024-01-15T14:00:00Z')
+
+    const bootstrap: BootstrapStatic = {
+      ...createMockBootstrapStatic(),
+      events: {
+        current: 20,
+        data: [
+          { id: 21, name: 'Gameweek 21', deadline_time: deadline.toISOString(), finished: false, is_current: false, is_next: true },
+        ],
+      },
+    }
+
+    const result = getDeadlineInfo(bootstrap)
+    const waiverDate = new Date(result.waiverDeadline!)
+    const lineupDate = new Date(result.lineupDeadline!)
+    const diffHours = (lineupDate.getTime() - waiverDate.getTime()) / (1000 * 60 * 60)
+    expect(diffHours).toBe(24)
+  })
+
+  it('falls back to last event when all deadlines have passed', () => {
+    vi.setSystemTime(new Date('2024-06-01T00:00:00Z'))
+
+    const bootstrap: BootstrapStatic = {
+      ...createMockBootstrapStatic(),
+      events: {
+        current: 38,
+        data: [
+          { id: 37, name: 'Gameweek 37', deadline_time: '2024-05-10T00:00:00Z', finished: true, is_current: false, is_next: false },
+          { id: 38, name: 'Gameweek 38', deadline_time: '2024-05-19T00:00:00Z', finished: true, is_current: true, is_next: false },
+        ],
+      },
+    }
+
+    const result = getDeadlineInfo(bootstrap)
+    expect(result.nextEvent).toBe(38)
+  })
+
+  it('returns null deadlines when no events exist', () => {
+    const bootstrap: BootstrapStatic = {
+      ...createMockBootstrapStatic(),
+      events: { current: 0, data: [] },
+    }
+
+    const result = getDeadlineInfo(bootstrap)
+    expect(result.nextEvent).toBe(1)
+    expect(result.waiverDeadline).toBeNull()
+    expect(result.lineupDeadline).toBeNull()
   })
 })
