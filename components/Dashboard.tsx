@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { TabNavigation, TabIcons } from './TabNavigation'
 import { GWSummary } from './GWSummary'
 import { Fixtures } from './Fixtures'
@@ -39,7 +39,6 @@ interface DashboardProps {
   currentFixtures: FixtureWithNames[]
   allMatches: FixtureWithNames[]
   pointsBreakdown: Record<number, TeamPointsBreakdown>
-  allPointsBreakdown: Record<number, Record<number, TeamPointsBreakdown>>
   form: Record<number, FormResult[]>
   summerStandings: SummerStandingEntry[]
   h2h: Record<number, Record<number, H2HRecord>>
@@ -63,7 +62,6 @@ export function Dashboard({
   currentFixtures,
   allMatches,
   pointsBreakdown,
-  allPointsBreakdown,
   form,
   summerStandings,
   h2h,
@@ -74,6 +72,31 @@ export function Dashboard({
   luckMetrics,
 }: DashboardProps) {
   const [activeTab, setActiveTab] = useState('live')
+  const [allPointsBreakdown, setAllPointsBreakdown] = useState<Record<number, Record<number, TeamPointsBreakdown>> | null>(null)
+  const [breakdownLoading, setBreakdownLoading] = useState(false)
+  const [breakdownError, setBreakdownError] = useState(false)
+
+  const fetchBreakdown = useCallback(async () => {
+    if (allPointsBreakdown || breakdownLoading) return
+    setBreakdownLoading(true)
+    setBreakdownError(false)
+    try {
+      const res = await fetch('/api/points-breakdown')
+      if (!res.ok) throw new Error('Failed to fetch')
+      const data = await res.json()
+      setAllPointsBreakdown(data)
+    } catch {
+      setBreakdownError(true)
+    } finally {
+      setBreakdownLoading(false)
+    }
+  }, [allPointsBreakdown, breakdownLoading])
+
+  useEffect(() => {
+    if (activeTab === 'results') {
+      fetchBreakdown()
+    }
+  }, [activeTab, fetchBreakdown])
 
   return (
     <div className="min-h-screen">
@@ -124,7 +147,29 @@ export function Dashboard({
           )}
 
           {activeTab === 'results' && (
-            <Results matches={allMatches} currentEvent={currentEvent} allPointsBreakdown={allPointsBreakdown} />
+            breakdownLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="flex items-center gap-3 text-[var(--muted)]">
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span className="text-sm">Loading results...</span>
+                </div>
+              </div>
+            ) : breakdownError ? (
+              <div className="bg-[var(--card)] rounded-xl border border-[var(--card-border)] p-8 text-center">
+                <p className="text-[var(--muted)] text-sm mb-3">Failed to load results data</p>
+                <button
+                  onClick={() => { setBreakdownError(false); fetchBreakdown() }}
+                  className="text-sm text-[var(--accent)] hover:underline"
+                >
+                  Try again
+                </button>
+              </div>
+            ) : (
+              <Results matches={allMatches} currentEvent={currentEvent} allPointsBreakdown={allPointsBreakdown || {}} />
+            )
           )}
 
           {activeTab === 'fixtures' && (

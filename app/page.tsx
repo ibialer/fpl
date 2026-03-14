@@ -14,7 +14,7 @@ import {
   calculateTeamForm,
   calculateHeadToHead,
   calculateLuckMetrics,
-  fetchAllPointsBreakdown,
+  fetchPointsBreakdown,
   fetchDraftChoices,
   processWhatIfSquads,
 } from '@/lib/api'
@@ -39,16 +39,26 @@ export default async function Home() {
     const currentFixtures = processFixtures(leagueDetails, currentEvent)
     const allMatches = processAllMatches(leagueDetails)
 
-    // Fetch points breakdown for all finished gameweeks
-    let allPointsBreakdown: Map<number, Map<number, TeamPointsBreakdown>> = new Map()
-    try {
-      allPointsBreakdown = await fetchAllPointsBreakdown(leagueDetails, bootstrapStatic, currentEvent)
-    } catch (e) {
-      console.error('Failed to fetch points breakdown:', e)
+    // Fetch current GW breakdown and draft choices in parallel
+    let pointsBreakdown = new Map<number, TeamPointsBreakdown>()
+    let whatIfSquads: ReturnType<typeof processWhatIfSquads> = []
+
+    const [breakdownResult, draftResult] = await Promise.allSettled([
+      fetchPointsBreakdown(leagueDetails, bootstrapStatic, currentEvent),
+      fetchDraftChoices(),
+    ])
+
+    if (breakdownResult.status === 'fulfilled') {
+      pointsBreakdown = breakdownResult.value
+    } else {
+      console.error('Failed to fetch points breakdown:', breakdownResult.reason)
     }
 
-    // Get current event breakdown for the Live tab
-    const pointsBreakdown = allPointsBreakdown.get(currentEvent) || new Map()
+    if (draftResult.status === 'fulfilled') {
+      whatIfSquads = processWhatIfSquads(draftResult.value.choices, bootstrapStatic, leagueDetails)
+    } else {
+      console.error('Failed to fetch draft choices:', draftResult.reason)
+    }
 
     // Determine which GW's transactions to show
     // After waiver deadline passes, show transactions for the upcoming GW
@@ -86,15 +96,6 @@ export default async function Home() {
       Array.from(calculateHeadToHead(leagueDetails).entries()).map(([k, v]) => [k, Object.fromEntries(v)])
     )
 
-    // Fetch and process What If squads
-    let whatIfSquads: ReturnType<typeof processWhatIfSquads> = []
-    try {
-      const draftChoices = await fetchDraftChoices()
-      whatIfSquads = processWhatIfSquads(draftChoices.choices, bootstrapStatic, leagueDetails)
-    } catch (e) {
-      console.error('Failed to fetch draft choices:', e)
-    }
-
     return (
       <main className="pb-24">
         <Header
@@ -109,12 +110,6 @@ export default async function Home() {
           currentFixtures={currentFixtures}
           allMatches={allMatches}
           pointsBreakdown={Object.fromEntries(pointsBreakdown)}
-          allPointsBreakdown={Object.fromEntries(
-            Array.from(allPointsBreakdown.entries()).map(([event, breakdown]) => [
-              event,
-              Object.fromEntries(breakdown)
-            ])
-          )}
           form={form}
           summerStandings={summerStandings}
           h2h={h2h}
