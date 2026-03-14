@@ -650,6 +650,52 @@ describe('GWSummary', () => {
     render(<GWSummary {...defaultProps} />)
     expect(screen.getByText('AI-generated summary based on current gameweek data')).toBeInTheDocument()
   })
+
+  it('streams summary text from SSE response', async () => {
+    const encoder = new TextEncoder()
+    const chunks = [
+      encoder.encode('data: {"text":"Hello "}\n\n'),
+      encoder.encode('data: {"text":"world!"}\n\ndata: [DONE]\n\n'),
+    ]
+    let chunkIndex = 0
+
+    const mockReader = {
+      read: vi.fn().mockImplementation(() => {
+        if (chunkIndex < chunks.length) {
+          return Promise.resolve({ done: false, value: chunks[chunkIndex++] })
+        }
+        return Promise.resolve({ done: true, value: undefined })
+      }),
+    }
+
+    ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      body: { getReader: () => mockReader },
+    })
+
+    render(<GWSummary {...defaultProps} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Hello world!')).toBeInTheDocument()
+    })
+  })
+
+  it('shows non-ok fetch as error', async () => {
+    ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: false })
+    render(<GWSummary {...defaultProps} />)
+    await waitFor(() => {
+      expect(screen.getByText('Could not load AI summary')).toBeInTheDocument()
+    })
+  })
+
+  it('shows upcoming count for not-started matches', () => {
+    ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockReturnValue(new Promise(() => {}))
+    const fixtures = [
+      { event: 21, team1Id: 1, team1Name: 'A', team1PlayerName: 'P', team1Points: 0, team2Id: 2, team2Name: 'B', team2PlayerName: 'Q', team2Points: 0, finished: false, started: false, winner: null },
+    ]
+    render(<GWSummary {...defaultProps} fixtures={fixtures} />)
+    expect(screen.getByText('1 upcoming')).toBeInTheDocument()
+  })
 })
 
 // ===== RESULTS (expanded) =====
@@ -931,6 +977,111 @@ describe('PLMatches (component)', () => {
     await waitFor(() => {
       expect(screen.getByText('1 match')).toBeInTheDocument()
     })
+  })
+
+  it('shows Live badge for started but unfinished fixture', async () => {
+    const response = {
+      event: 21, totalEvents: 38, currentEvent: 21,
+      fixtures: [{
+        id: 1, event: 21,
+        homeTeam: { id: 1, name: 'Arsenal', shortName: 'ARS' },
+        awayTeam: { id: 2, name: 'Chelsea', shortName: 'CHE' },
+        homeScore: 1, awayScore: 0,
+        kickoffTime: '2024-01-13T15:00:00Z',
+        started: true, finished: false, finishedProvisional: false,
+        homePlayers: [], awayPlayers: [],
+      }],
+    }
+    ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true, json: () => Promise.resolve(response),
+    })
+    render(<PLMatches currentEvent={21} />)
+    await waitFor(() => {
+      expect(screen.getByText('Live')).toBeInTheDocument()
+    })
+  })
+
+  it('shows kickoff time for not-started fixture', async () => {
+    const response = {
+      event: 21, totalEvents: 38, currentEvent: 21,
+      fixtures: [{
+        id: 1, event: 21,
+        homeTeam: { id: 1, name: 'Arsenal', shortName: 'ARS' },
+        awayTeam: { id: 2, name: 'Chelsea', shortName: 'CHE' },
+        homeScore: null, awayScore: null,
+        kickoffTime: '2024-01-13T15:00:00Z',
+        started: false, finished: false, finishedProvisional: false,
+        homePlayers: [], awayPlayers: [],
+      }],
+    }
+    ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true, json: () => Promise.resolve(response),
+    })
+    render(<PLMatches currentEvent={21} />)
+    await waitFor(() => {
+      // Should show "vs" instead of a score for unstarted fixture
+      expect(screen.getByText('vs')).toBeInTheDocument()
+    })
+  })
+
+  it('navigates to next gameweek on forward button click', async () => {
+    ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ event: 21, totalEvents: 38, currentEvent: 21, fixtures: [] }),
+    })
+    render(<PLMatches currentEvent={21} />)
+    await waitFor(() => {
+      expect(screen.getByText('No fixtures this week')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByLabelText('Next gameweek'))
+    expect(screen.getByText('Gameweek 22')).toBeInTheDocument()
+  })
+
+  it('navigates to previous gameweek on back button click', async () => {
+    ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ event: 21, totalEvents: 38, currentEvent: 21, fixtures: [] }),
+    })
+    render(<PLMatches currentEvent={21} />)
+    await waitFor(() => {
+      expect(screen.getByText('No fixtures this week')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByLabelText('Previous gameweek'))
+    expect(screen.getByText('Gameweek 20')).toBeInTheDocument()
+  })
+
+  it('shows goal and assist icons for players', async () => {
+    const response = createPLMatchesResponse()
+    ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true, json: () => Promise.resolve(response),
+    })
+    render(<PLMatches currentEvent={21} />)
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Arsenal vs Chelsea/)).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByLabelText(/Arsenal vs Chelsea/))
+    // Saka has 1 goal and 1 assist, Palmer has 1 goal
+    const goals = screen.getAllByTitle('Goal')
+    expect(goals.length).toBe(2)
+    const assists = screen.getAllByTitle('Assist')
+    expect(assists.length).toBe(1)
+  })
+
+  it('collapses expanded fixture on second click', async () => {
+    const response = createPLMatchesResponse()
+    ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true, json: () => Promise.resolve(response),
+    })
+    render(<PLMatches currentEvent={21} />)
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Arsenal vs Chelsea/)).toBeInTheDocument()
+    })
+    // Expand
+    fireEvent.click(screen.getByLabelText(/Arsenal vs Chelsea/))
+    expect(screen.getByText('Saka')).toBeInTheDocument()
+    // Collapse
+    fireEvent.click(screen.getByLabelText(/Arsenal vs Chelsea/))
+    expect(screen.queryByText('Saka')).not.toBeInTheDocument()
   })
 })
 

@@ -21,6 +21,8 @@ import {
   fetchLiveEvent,
   fetchDraftChoices,
   fetchAllData,
+  fetchPointsBreakdown,
+  fetchAllPointsBreakdown,
 } from './api'
 import {
   LeagueDetails,
@@ -1108,6 +1110,281 @@ describe('fetch functions', () => {
         .mockResolvedValueOnce(mockResponse({ transactions: [] }))
 
       await expect(fetchAllData()).rejects.toThrow()
+    })
+  })
+
+  describe('fetchPointsBreakdown', () => {
+    it('builds breakdown with player stats, per-game explain, and opponent info', async () => {
+      const leagueDetails = createMockLeagueDetails()
+      const bootstrap = createMockBootstrapStatic()
+
+      // Mock fetchLiveEvent (1st call) and fetchEntryPicks (2 calls for 2 entries)
+      const liveData = {
+        elements: {
+          '1': {
+            stats: {
+              total_points: 8, goals_scored: 1, assists: 0, clean_sheets: 0,
+              bonus: 2, yellow_cards: 0, red_cards: 0, own_goals: 0,
+              penalties_missed: 0, penalties_saved: 0, bps: 30, saves: 0,
+              minutes: 90, clearances_blocks_interceptions: 0, recoveries: 0,
+              tackles: 0, defensive_contribution: 3,
+            },
+            explain: [
+              [
+                [
+                  { name: 'Minutes played', points: 2, value: 90, stat: 'minutes' },
+                  { name: 'Goals scored', points: 5, value: 1, stat: 'goals_scored' },
+                  { name: 'Bonus', points: 2, value: 2, stat: 'bonus' },
+                  { name: 'DC', points: 1, value: 3, stat: 'defensive_contribution' },
+                ],
+                101, // fixtureId
+              ],
+            ],
+          },
+        },
+        fixtures: [
+          { id: 101, event: 21, team_h: 1, team_a: 2, team_h_score: 2, team_a_score: 0, finished: false, finished_provisional: false, started: true, kickoff_time: '2024-01-01T00:00:00Z', minutes: 90 },
+        ],
+      }
+      const picks1 = { picks: [{ element: 1, position: 1, is_captain: false, is_vice_captain: false, multiplier: 1 }] }
+      const picks2 = { picks: [{ element: 1, position: 1, is_captain: false, is_vice_captain: false, multiplier: 1 }] }
+
+      mockFetch
+        .mockResolvedValueOnce(mockResponse(liveData)) // fetchLiveEvent
+        .mockResolvedValueOnce(mockResponse(picks1))    // fetchEntryPicks for entry 100
+        .mockResolvedValueOnce(mockResponse(picks2))    // fetchEntryPicks for entry 200
+
+      const result = await fetchPointsBreakdown(leagueDetails, bootstrap, 21)
+
+      // Should have breakdown for both teams
+      expect(result.size).toBe(2)
+
+      const team1 = result.get(1)!
+      expect(team1.teamName).toBe('Team A')
+      expect(team1.playerName).toBe('John Doe')
+      expect(team1.players).toHaveLength(1)
+
+      const player = team1.players[0]
+      expect(player.name).toBe('Salah')
+      expect(player.points).toBe(8)
+      expect(player.positionName).toBe('MID')
+      expect(player.teamShortName).toBe('LIV')
+      expect(player.opponentShortName).toBe('MCI')
+      expect(player.isHome).toBe(true)
+      expect(player.goals).toBe(1)
+      expect(player.bonus).toBe(2)
+      expect(player.hasPlayed).toBe(true)
+      expect(player.defensiveContribution).toBe(3)
+
+      // Per-game stats should be parsed from explain
+      expect(player.perGameStats).toHaveLength(1)
+      const gameStat = player.perGameStats[0]
+      expect(gameStat.fixtureId).toBe(101)
+      expect(gameStat.minutes).toBe(90)
+      expect(gameStat.goals).toBe(1)
+      expect(gameStat.bonus).toBe(2)
+      expect(gameStat.defensiveContribution).toBe(3)
+      expect(gameStat.points).toBe(10) // 2+5+2+1
+      expect(gameStat.opponentShortName).toBe('MCI')
+      expect(gameStat.isHome).toBe(true)
+    })
+
+    it('handles benched players (position > 11) and excludes from total', async () => {
+      const leagueDetails = createMockLeagueDetails()
+      const bootstrap = createMockBootstrapStatic()
+
+      const liveData = {
+        elements: {
+          '1': {
+            stats: { total_points: 5, goals_scored: 0, assists: 0, clean_sheets: 0, bonus: 0, yellow_cards: 0, red_cards: 0, own_goals: 0, penalties_missed: 0, penalties_saved: 0, bps: 10, saves: 0, minutes: 90, clearances_blocks_interceptions: 0, recoveries: 0, tackles: 0, defensive_contribution: 0 },
+            explain: [],
+          },
+          '2': {
+            stats: { total_points: 3, goals_scored: 0, assists: 0, clean_sheets: 0, bonus: 0, yellow_cards: 0, red_cards: 0, own_goals: 0, penalties_missed: 0, penalties_saved: 0, bps: 5, saves: 0, minutes: 45, clearances_blocks_interceptions: 0, recoveries: 0, tackles: 0, defensive_contribution: 0 },
+            explain: [],
+          },
+        },
+        fixtures: [
+          { id: 101, event: 21, team_h: 1, team_a: 2, team_h_score: 1, team_a_score: 0, finished: true, finished_provisional: true, started: true, kickoff_time: '2024-01-01T00:00:00Z', minutes: 90 },
+        ],
+      }
+      const picks = {
+        picks: [
+          { element: 1, position: 1, is_captain: false, is_vice_captain: false, multiplier: 1 },
+          { element: 2, position: 12, is_captain: false, is_vice_captain: false, multiplier: 0 }, // benched
+        ],
+      }
+
+      mockFetch
+        .mockResolvedValueOnce(mockResponse(liveData))
+        .mockResolvedValueOnce(mockResponse(picks))
+        .mockResolvedValueOnce(mockResponse({ picks: [] }))
+
+      const result = await fetchPointsBreakdown(leagueDetails, bootstrap, 21)
+      const team1 = result.get(1)!
+      // Total should only count starters (position <= 11)
+      expect(team1.totalPoints).toBe(5)
+      // Benched player should be marked
+      const benched = team1.players.find(p => p.isBenched)
+      expect(benched?.name).toBe('Haaland')
+      expect(benched?.points).toBe(3)
+    })
+
+    it('handles unknown players gracefully', async () => {
+      const leagueDetails = createMockLeagueDetails()
+      const bootstrap = createMockBootstrapStatic()
+
+      const liveData = {
+        elements: {},
+        fixtures: [],
+      }
+      const picks = {
+        picks: [{ element: 999, position: 1, is_captain: false, is_vice_captain: false, multiplier: 1 }],
+      }
+
+      mockFetch
+        .mockResolvedValueOnce(mockResponse(liveData))
+        .mockResolvedValueOnce(mockResponse(picks))
+        .mockResolvedValueOnce(mockResponse({ picks: [] }))
+
+      const result = await fetchPointsBreakdown(leagueDetails, bootstrap, 21)
+      const team1 = result.get(1)!
+      expect(team1.players[0].name).toBe('Unknown')
+      expect(team1.players[0].positionName).toBe('UNK')
+      expect(team1.players[0].opponentShortName).toBe('???')
+    })
+
+    it('parses all stat types from explain field', async () => {
+      const leagueDetails = createMockLeagueDetails()
+      // Only 1 entry to simplify
+      leagueDetails.league_entries = [leagueDetails.league_entries[0]]
+      const bootstrap = createMockBootstrapStatic()
+
+      const liveData = {
+        elements: {
+          '1': {
+            stats: { total_points: 2, goals_scored: 0, assists: 1, clean_sheets: 1, bonus: 0, yellow_cards: 1, red_cards: 1, own_goals: 1, penalties_missed: 1, penalties_saved: 1, bps: 5, saves: 4, minutes: 90, clearances_blocks_interceptions: 0, recoveries: 0, tackles: 0, defensive_contribution: 0 },
+            explain: [
+              [
+                [
+                  { name: 'Minutes', points: 2, value: 90, stat: 'minutes' },
+                  { name: 'Assists', points: 3, value: 1, stat: 'assists' },
+                  { name: 'CS', points: 4, value: 1, stat: 'clean_sheets' },
+                  { name: 'YC', points: -1, value: 1, stat: 'yellow_cards' },
+                  { name: 'RC', points: -3, value: 1, stat: 'red_cards' },
+                  { name: 'Saves', points: 1, value: 4, stat: 'saves' },
+                  { name: 'PS', points: 5, value: 1, stat: 'penalties_saved' },
+                  { name: 'PM', points: -2, value: 1, stat: 'penalties_missed' },
+                  { name: 'OG', points: -2, value: 1, stat: 'own_goals' },
+                  { name: 'GC', points: -1, value: 3, stat: 'goals_conceded' },
+                ],
+                101,
+              ],
+            ],
+          },
+        },
+        fixtures: [
+          { id: 101, event: 21, team_h: 1, team_a: 2, team_h_score: 0, team_a_score: 0, finished: true, finished_provisional: true, started: true, kickoff_time: '2024-01-01T00:00:00Z', minutes: 90 },
+        ],
+      }
+
+      mockFetch
+        .mockResolvedValueOnce(mockResponse(liveData))
+        .mockResolvedValueOnce(mockResponse({
+          picks: [{ element: 1, position: 1, is_captain: false, is_vice_captain: false, multiplier: 1 }],
+        }))
+
+      const result = await fetchPointsBreakdown(leagueDetails, bootstrap, 21)
+      const game = result.get(1)!.players[0].perGameStats[0]
+
+      expect(game.minutes).toBe(90)
+      expect(game.assists).toBe(1)
+      expect(game.cleanSheet).toBe(true)
+      expect(game.yellowCards).toBe(1)
+      expect(game.redCards).toBe(1)
+      expect(game.saves).toBe(4)
+      expect(game.penaltiesSaved).toBe(1)
+      expect(game.penaltiesMissed).toBe(1)
+      expect(game.ownGoals).toBe(1)
+      expect(game.goalsConceeded).toBe(3)
+    })
+  })
+
+  describe('fetchAllPointsBreakdown', () => {
+    it('fetches breakdowns for all finished events', async () => {
+      const leagueDetails = createMockLeagueDetails({
+        matches: [
+          { event: 1, finished: true, started: true, league_entry_1: 1, league_entry_1_points: 50, league_entry_2: 2, league_entry_2_points: 40, winning_league_entry: 1, winning_method: 'points' },
+          { event: 2, finished: true, started: true, league_entry_1: 1, league_entry_1_points: 45, league_entry_2: 2, league_entry_2_points: 55, winning_league_entry: 2, winning_method: 'points' },
+          { event: 3, finished: false, started: false, league_entry_1: 1, league_entry_1_points: 0, league_entry_2: 2, league_entry_2_points: 0, winning_league_entry: null, winning_method: null },
+        ],
+      })
+      const bootstrap = createMockBootstrapStatic()
+
+      // Each call to fetchPointsBreakdown triggers: fetchLiveEvent + N fetchEntryPicks
+      // For 2 finished events, that's 2 * (1 + 2) = 6 fetches
+      const liveData = { elements: {}, fixtures: [] }
+      const emptyPicks = { picks: [] }
+
+      mockFetch.mockResolvedValue(mockResponse(liveData))
+      // Override for picks calls
+      for (let i = 0; i < 10; i++) {
+        mockFetch.mockResolvedValueOnce(mockResponse(liveData))
+          .mockResolvedValueOnce(mockResponse(emptyPicks))
+          .mockResolvedValueOnce(mockResponse(emptyPicks))
+      }
+
+      const result = await fetchAllPointsBreakdown(leagueDetails, bootstrap, 3)
+
+      // Should have breakdowns for events 1 and 2 (finished), not 3 (not started)
+      expect(result.has(1)).toBe(true)
+      expect(result.has(2)).toBe(true)
+      expect(result.has(3)).toBe(false)
+    })
+
+    it('includes current event if started', async () => {
+      const leagueDetails = createMockLeagueDetails({
+        matches: [
+          { event: 1, finished: true, started: true, league_entry_1: 1, league_entry_1_points: 50, league_entry_2: 2, league_entry_2_points: 40, winning_league_entry: 1, winning_method: 'points' },
+          { event: 2, finished: false, started: true, league_entry_1: 1, league_entry_1_points: 30, league_entry_2: 2, league_entry_2_points: 20, winning_league_entry: null, winning_method: null },
+        ],
+      })
+      const bootstrap = createMockBootstrapStatic()
+
+      const liveData = { elements: {}, fixtures: [] }
+      const emptyPicks = { picks: [] }
+      mockFetch.mockResolvedValue(mockResponse(emptyPicks))
+      for (let i = 0; i < 10; i++) {
+        mockFetch.mockResolvedValueOnce(mockResponse(liveData))
+          .mockResolvedValueOnce(mockResponse(emptyPicks))
+          .mockResolvedValueOnce(mockResponse(emptyPicks))
+      }
+
+      const result = await fetchAllPointsBreakdown(leagueDetails, bootstrap, 2)
+
+      // Event 2 started but not finished — should be included
+      expect(result.has(1)).toBe(true)
+      expect(result.has(2)).toBe(true)
+    })
+
+    it('handles errors gracefully for individual events', async () => {
+      const leagueDetails = createMockLeagueDetails({
+        matches: [
+          { event: 1, finished: true, started: true, league_entry_1: 1, league_entry_1_points: 50, league_entry_2: 2, league_entry_2_points: 40, winning_league_entry: 1, winning_method: 'points' },
+        ],
+      })
+      const bootstrap = createMockBootstrapStatic()
+
+      // Make fetchLiveEvent fail
+      mockFetch.mockResolvedValue(mockResponse(null, false))
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const result = await fetchAllPointsBreakdown(leagueDetails, bootstrap, 1)
+
+      // Should still return a result, just with empty breakdown
+      expect(result.has(1)).toBe(true)
+      expect(result.get(1)!.size).toBe(0)
+      consoleSpy.mockRestore()
     })
   })
 })
