@@ -175,7 +175,7 @@ export function Dashboard({
           )}
 
           {activeTab === 'results' && (
-            breakdownLoading ? (
+            (breakdownLoading || (!allPointsBreakdown && !breakdownError)) ? (
               <div className="flex items-center justify-center py-12">
                 <div className="flex items-center gap-3 text-[var(--muted)]">
                   <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">

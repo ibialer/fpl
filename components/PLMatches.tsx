@@ -135,7 +135,7 @@ function FixtureCard({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 ml-3 shrink-0">
+        <div className="flex items-center gap-2 ml-3 shrink-0 w-[72px] justify-end">
           <StatusBadge fixture={fixture} />
           {hasPlayers && (
             <svg
