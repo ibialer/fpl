@@ -1,12 +1,16 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { FixtureWithNames, TeamPointsBreakdown } from '@/lib/types'
+import { FormResult, H2HRecord, LuckMetricsData } from '@/lib/api'
 
 interface GWSummaryProps {
   currentEvent: number
   fixtures: FixtureWithNames[]
   pointsBreakdown: Record<number, TeamPointsBreakdown>
+  form?: Record<number, FormResult[]>
+  h2h?: Record<number, Record<number, H2HRecord>>
+  luckMetrics?: LuckMetricsData[]
 }
 
 // Skeleton loader for summary
@@ -84,38 +88,47 @@ function ErrorState({ message, onRetry }: { message: string; onRetry?: () => voi
   )
 }
 
-// Summary content with typing effect
-function SummaryContent({ text }: { text: string }) {
-  // Split summary into sentences for better formatting
+// Summary content
+function SummaryContent({ text, streaming }: { text: string; streaming?: boolean }) {
   const sentences = text.split(/(?<=[.!?])\s+/).filter(Boolean)
 
   return (
     <div className="flex items-start gap-3">
-      <AIIcon />
+      <AIIcon isLoading={streaming} />
       <div className="flex-1 min-w-0">
-        <div className="text-sm leading-relaxed animate-fade-in">
+        <div className="text-sm leading-relaxed">
           {sentences.map((sentence, index) => (
             <span
               key={index}
-              className="inline"
+              className="inline animate-fade-in"
               style={{ animationDelay: `${index * 100}ms` }}
             >
               {sentence}{' '}
             </span>
           ))}
+          {streaming && <span className="inline-block w-1.5 h-4 bg-[var(--accent)] animate-pulse align-text-bottom" />}
         </div>
       </div>
     </div>
   )
 }
 
-export function GWSummary({ currentEvent, fixtures, pointsBreakdown }: GWSummaryProps) {
-  const [summary, setSummary] = useState<string | null>(null)
+export function GWSummary({ currentEvent, fixtures, pointsBreakdown, form, h2h, luckMetrics }: GWSummaryProps) {
+  const [summary, setSummary] = useState<string>('')
   const [loading, setLoading] = useState(true)
+  const [streaming, setStreaming] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   const fetchSummary = async () => {
+    // Abort any in-flight request
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+
     setLoading(true)
+    setStreaming(false)
+    setSummary('')
     setError(null)
 
     try {
@@ -126,25 +139,63 @@ export function GWSummary({ currentEvent, fixtures, pointsBreakdown }: GWSummary
           currentEvent,
           fixtures,
           pointsBreakdown,
+          form,
+          h2h,
+          luckMetrics,
         }),
+        signal: controller.signal,
       })
 
       if (!response.ok) {
         throw new Error('Failed to fetch summary')
       }
 
-      const data = await response.json()
-      setSummary(data.summary)
-    } catch (err) {
-      setError('Could not load AI summary')
-      console.error('Error fetching GW summary:', err)
-    } finally {
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error('No response body')
+
+      const decoder = new TextDecoder()
       setLoading(false)
+      setStreaming(true)
+      let accumulated = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value, { stream: true })
+        const lines = chunk.split('\n')
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6)
+            if (data === '[DONE]') {
+              setStreaming(false)
+              continue
+            }
+            try {
+              const parsed = JSON.parse(data)
+              if (parsed.text) {
+                accumulated += parsed.text
+                setSummary(accumulated)
+              }
+            } catch {
+              // skip malformed chunks
+            }
+          }
+        }
+      }
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') return
+      setError('Could not load AI summary')
+      setLoading(false)
+      setStreaming(false)
+      console.error('Error fetching GW summary:', err)
     }
   }
 
   useEffect(() => {
     fetchSummary()
+    return () => abortRef.current?.abort()
   }, [currentEvent, fixtures, pointsBreakdown])
 
   // Calculate some quick stats for the header
@@ -184,7 +235,7 @@ export function GWSummary({ currentEvent, fixtures, pointsBreakdown }: GWSummary
       <div className="px-4 py-4">
         {loading && <SummarySkeleton />}
         {error && !loading && <ErrorState message={error} onRetry={fetchSummary} />}
-        {!loading && !error && summary && <SummaryContent text={summary} />}
+        {!loading && !error && summary && <SummaryContent text={summary} streaming={streaming} />}
       </div>
 
       {/* Footer with disclaimer */}

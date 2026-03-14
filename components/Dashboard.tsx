@@ -94,6 +94,9 @@ export function Dashboard({
                 currentEvent={currentEvent}
                 fixtures={currentFixtures}
                 pointsBreakdown={pointsBreakdown}
+                form={form}
+                h2h={h2h}
+                luckMetrics={luckMetrics}
               />
 
               {/* Current Gameweek Fixtures */}
