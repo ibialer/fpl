@@ -10,11 +10,11 @@ interface PLMatchesProps {
 
 function StatusBadge({ fixture }: { fixture: PLFixtureWithDetails }) {
   if (fixture.finished || fixture.finishedProvisional) {
-    return <span className="text-[10px] font-semibold text-[var(--muted)] uppercase">FT</span>
+    return <span className="text-[10px] font-semibold text-[var(--muted)] uppercase w-[38px] text-center">FT</span>
   }
   if (fixture.started) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-[var(--success)] uppercase">
+      <span className="inline-flex items-center justify-center gap-1 text-[10px] font-semibold text-[var(--success)] uppercase w-[38px]">
         <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)] animate-pulse" />
         Live
       </span>
@@ -22,7 +22,7 @@ function StatusBadge({ fixture }: { fixture: PLFixtureWithDetails }) {
   }
   const time = new Date(fixture.kickoffTime)
   return (
-    <span className="text-[10px] text-[var(--muted)] tabular-nums">
+    <span className="text-[10px] text-[var(--muted)] tabular-nums w-[38px] text-center">
       {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
     </span>
   )
@@ -137,7 +137,7 @@ function FixtureRow({
       >
         {/* Left spacer — mirrors status+chevron width for centering */}
         <div className="flex items-center gap-2 invisible">
-          <span className="text-[10px] font-semibold min-w-[40px]">FT</span>
+          <span className="w-[38px]">FT</span>
           <svg className="w-4 h-4" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" /></svg>
         </div>
 
