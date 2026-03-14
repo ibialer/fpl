@@ -71,9 +71,10 @@ className="sticky top-[105px] sm:top-[85px] z-[calc(var(--z-sticky)+1)] glass bg
                 role="tab"
                 aria-selected={isActive}
                 aria-controls={`${tab.id}-panel`}
+                aria-label={tab.label}
                 tabIndex={isActive ? 0 : -1}
                 className={`
-                  relative flex-1 min-w-[80px] px-4 py-3.5
+                  relative flex-1 min-w-[48px] sm:min-w-[80px] px-3 sm:px-4 py-3.5
                   flex items-center justify-center gap-2
                   text-sm font-medium
                   touch-target btn-press
@@ -92,8 +93,8 @@ className="sticky top-[105px] sm:top-[85px] z-[calc(var(--z-sticky)+1)] glass bg
                   </span>
                 )}
 
-                {/* Label */}
-                <span className="whitespace-nowrap">{tab.label}</span>
+                {/* Label - hidden on mobile when icon is present */}
+                <span className={`whitespace-nowrap ${tab.icon ? 'hidden sm:inline' : ''}`}>{tab.label}</span>
 
                 {/* Active indicator dot for mobile (fallback) */}
                 {isActive && (
