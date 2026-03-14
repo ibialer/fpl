@@ -44,14 +44,11 @@ export function computeBpsStats(home: PLFixturePlayer[], away: PLFixturePlayer[]
 function PlayerRow({
   player,
   bpsRank,
-  maxBps,
 }: {
   player: PLFixturePlayer
   bpsRank: number | undefined
-  maxBps: number
 }) {
   const isTop3 = bpsRank !== undefined && bpsRank <= 3
-  const bpsPercent = maxBps > 0 ? (player.bps / maxBps) * 100 : 0
   const isOwned = player.owner !== null
 
   return (
@@ -75,48 +72,17 @@ function PlayerRow({
         </span>
       )}
 
-      {/* Stats cluster */}
-      <div className="flex items-center gap-1 shrink-0">
-        {/* Goals */}
-        {player.goals_scored > 0 && (
-          <span
-            className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-[var(--foreground)] bg-[var(--card-border)] px-1 py-0.5 rounded"
-            title={`${player.goals_scored} goal${player.goals_scored > 1 ? 's' : ''}`}
-          >
-            <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2" />
-              <circle cx="12" cy="12" r="4" fill="currentColor" />
-            </svg>
-            {player.goals_scored > 1 && <span>{player.goals_scored}</span>}
-          </span>
-        )}
-
-        {/* Assists */}
-        {player.assists > 0 && (
-          <span
-            className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-[var(--muted-foreground)] bg-[var(--card-border)] px-1 py-0.5 rounded"
-            title={`${player.assists} assist${player.assists > 1 ? 's' : ''}`}
-          >
-            <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            {player.assists > 1 && <span>{player.assists}</span>}
-          </span>
-        )}
-
-        {/* Clean sheet */}
+      {/* Stats */}
+      <div className="flex items-center gap-0.5 shrink-0">
+        {Array.from({ length: player.goals_scored }, (_, i) => (
+          <span key={`g${i}`} className="stat-icon" title="Goal">⚽</span>
+        ))}
+        {Array.from({ length: player.assists }, (_, i) => (
+          <span key={`a${i}`} className="stat-icon" title="Assist">🅰️</span>
+        ))}
         {player.clean_sheets > 0 && (player.position === 'GK' || player.position === 'DEF') && (
-          <span
-            className="inline-flex items-center text-[10px] text-[var(--success)] bg-[var(--success-muted)] px-1 py-0.5 rounded"
-            title="Clean sheet"
-          >
-            <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" />
-            </svg>
-          </span>
+          <span className="stat-icon" title="Clean sheet">🛡️</span>
         )}
-
-        {/* Bonus */}
         {player.bonus > 0 && (
           <span
             className="text-[10px] font-semibold text-[var(--warning)] bg-[var(--warning-muted)] px-1 py-0.5 rounded"
@@ -127,24 +93,15 @@ function PlayerRow({
         )}
       </div>
 
-      {/* BPS bar + value */}
-      <div className="flex items-center gap-1.5 shrink-0 w-[72px]">
-        <div className="flex-1 h-1 bg-[var(--card-border)] rounded-full overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all ${
-              isTop3 ? 'bg-[var(--warning)]' : 'bg-[var(--muted)]'
-            }`}
-            style={{ width: `${bpsPercent}%` }}
-          />
-        </div>
-        <span
-          className={`text-[11px] font-bold min-w-[24px] text-right tabular-nums ${
-            isTop3 ? 'text-[var(--warning)]' : 'text-[var(--muted)]'
-          }`}
-        >
-          {player.bps}
-        </span>
-      </div>
+      {/* BPS value */}
+      <span
+        className={`text-[11px] font-bold min-w-[24px] text-right tabular-nums shrink-0 ${
+          isTop3 ? 'text-[var(--warning)]' : 'text-[var(--muted)]'
+        }`}
+        title="BPS"
+      >
+        {player.bps}
+      </span>
     </div>
   )
 }
@@ -159,8 +116,8 @@ function FixtureRow({
   onToggle: () => void
 }) {
   const hasPlayers = fixture.homePlayers.length > 0 || fixture.awayPlayers.length > 0
-  const bpsStats = useMemo(
-    () => (expanded ? computeBpsStats(fixture.homePlayers, fixture.awayPlayers) : { ranks: new Map<number, number>(), maxBps: 0 }),
+  const bpsRanks = useMemo(
+    () => (expanded ? computeBpsStats(fixture.homePlayers, fixture.awayPlayers).ranks : new Map<number, number>()),
     [expanded, fixture.homePlayers, fixture.awayPlayers]
   )
 
@@ -233,13 +190,6 @@ function FixtureRow({
       {/* Expanded player details */}
       {expanded && hasPlayers && (
         <div className="border-t border-[var(--card-border)] px-4 py-3 animate-fade-in">
-          {/* BPS column header */}
-          <div className="flex items-center justify-end mb-2 px-2.5">
-            <span className="text-[10px] font-semibold text-[var(--muted)] uppercase tracking-wide w-[72px] text-right">
-              BPS
-            </span>
-          </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
               { team: fixture.homeTeam, players: fixture.homePlayers },
@@ -257,8 +207,7 @@ function FixtureRow({
                     <PlayerRow
                       key={p.id}
                       player={p}
-                      bpsRank={bpsStats.ranks.get(p.id)}
-                      maxBps={bpsStats.maxBps}
+                      bpsRank={bpsRanks.get(p.id)}
                     />
                   ))}
                 </div>
@@ -332,26 +281,6 @@ export function PLMatches({ currentEvent }: PLMatchesProps) {
   const canGoBack = selectedEvent > 1
   const canGoForward = selectedEvent < totalEvents
 
-  const allFixtureIds = useMemo(
-    () => data?.fixtures.map((f) => f.id) || [],
-    [data]
-  )
-  const allExpanded = allFixtureIds.length > 0 && allFixtureIds.every((id) => expandedFixtures.has(id))
-  const hasExpandableFixtures = data?.fixtures.some(
-    (f) => f.homePlayers.length > 0 || f.awayPlayers.length > 0
-  )
-
-  const toggleAll = () => {
-    if (allExpanded) {
-      setExpandedFixtures(new Set())
-    } else {
-      setExpandedFixtures(new Set(
-        data?.fixtures
-          .filter((f) => f.homePlayers.length > 0 || f.awayPlayers.length > 0)
-          .map((f) => f.id) || []
-      ))
-    }
-  }
 
   return (
     <div className="space-y-4">
@@ -443,29 +372,9 @@ export function PLMatches({ currentEvent }: PLMatchesProps) {
                   <h3 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
                     {day}
                   </h3>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-[var(--muted)]">
-                      {dayFixtures.length} {dayFixtures.length === 1 ? 'match' : 'matches'}
-                    </span>
-                    {hasExpandableFixtures && (
-                      <button
-                        onClick={toggleAll}
-                        className="text-[10px] font-medium text-[var(--accent)] hover:underline touch-target flex items-center gap-1"
-                        aria-label={allExpanded ? 'Collapse all fixtures' : 'Expand all fixtures'}
-                      >
-                        <svg
-                          className={`w-3 h-3 transition-transform duration-200 ${allExpanded ? 'rotate-180' : ''}`}
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          strokeWidth={2.5}
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                        </svg>
-                        {allExpanded ? 'Collapse' : 'Expand'} all
-                      </button>
-                    )}
-                  </div>
+                  <span className="text-xs text-[var(--muted)]">
+                    {dayFixtures.length} {dayFixtures.length === 1 ? 'match' : 'matches'}
+                  </span>
                 </header>
 
                 {/* Fixture list */}
