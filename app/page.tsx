@@ -5,7 +5,6 @@ import {
   fetchAllData,
   processManagersWithSquads,
   processFixtures,
-  processAllMatches,
   processTransactions,
   getCurrentEvent,
   getDeadlineInfo,
@@ -15,8 +14,6 @@ import {
   calculateHeadToHead,
   calculateLuckMetrics,
   fetchPointsBreakdown,
-  fetchDraftChoices,
-  processWhatIfSquads,
 } from '@/lib/api'
 import { TeamPointsBreakdown } from '@/lib/types'
 
@@ -37,27 +34,14 @@ export default async function Home() {
       bootstrapStatic
     )
     const currentFixtures = processFixtures(leagueDetails, currentEvent)
-    const allMatches = processAllMatches(leagueDetails)
 
-    // Fetch current GW breakdown and draft choices in parallel
+    // Fetch current GW breakdown
     let pointsBreakdown = new Map<number, TeamPointsBreakdown>()
-    let whatIfSquads: ReturnType<typeof processWhatIfSquads> = []
 
-    const [breakdownResult, draftResult] = await Promise.allSettled([
-      fetchPointsBreakdown(leagueDetails, bootstrapStatic, currentEvent),
-      fetchDraftChoices(),
-    ])
-
-    if (breakdownResult.status === 'fulfilled') {
-      pointsBreakdown = breakdownResult.value
-    } else {
-      console.error('Failed to fetch points breakdown:', breakdownResult.reason)
-    }
-
-    if (draftResult.status === 'fulfilled') {
-      whatIfSquads = processWhatIfSquads(draftResult.value.choices, bootstrapStatic, leagueDetails)
-    } else {
-      console.error('Failed to fetch draft choices:', draftResult.reason)
+    try {
+      pointsBreakdown = await fetchPointsBreakdown(leagueDetails, bootstrapStatic, currentEvent)
+    } catch (error) {
+      console.error('Failed to fetch points breakdown:', error)
     }
 
     // Determine which GW's transactions to show
@@ -108,7 +92,7 @@ export default async function Home() {
           currentEvent={currentEvent}
           managers={managers}
           currentFixtures={currentFixtures}
-          allMatches={allMatches}
+          matches={leagueDetails.matches}
           pointsBreakdown={Object.fromEntries(pointsBreakdown)}
           form={form}
           summerStandings={summerStandings}
@@ -116,7 +100,6 @@ export default async function Home() {
           entries={leagueDetails.league_entries}
           transactions={recentTransactions}
           transactionsEvent={transactionsEvent}
-          whatIfSquads={whatIfSquads}
           luckMetrics={luckMetrics}
         />
 

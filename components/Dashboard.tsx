@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { TabNavigation, TabIcons } from './TabNavigation'
 import { GWSummary } from './GWSummary'
 import { Fixtures } from './Fixtures'
@@ -14,13 +14,14 @@ import { WhatIf } from './WhatIf'
 import { LuckMetrics } from './LuckMetrics'
 import {
   ManagerWithSquad,
-  FixtureWithNames,
+  Match,
   TransactionWithDetails,
   TeamPointsBreakdown,
   LeagueEntry,
   WhatIfSquad,
+  FixtureWithNames,
 } from '@/lib/types'
-import { FormResult, H2HRecord, LuckMetricsData } from '@/lib/api'
+import { FormResult, H2HRecord, LuckMetricsData, processAllMatches } from '@/lib/api'
 
 interface SummerStandingEntry {
   entry: LeagueEntry
@@ -37,7 +38,7 @@ interface DashboardProps {
   currentEvent: number
   managers: ManagerWithSquad[]
   currentFixtures: FixtureWithNames[]
-  allMatches: FixtureWithNames[]
+  matches: Match[]
   pointsBreakdown: Record<number, TeamPointsBreakdown>
   form: Record<number, FormResult[]>
   summerStandings: SummerStandingEntry[]
@@ -45,7 +46,6 @@ interface DashboardProps {
   entries: LeagueEntry[]
   transactions: TransactionWithDetails[]
   transactionsEvent: number
-  whatIfSquads: WhatIfSquad[]
   luckMetrics: LuckMetricsData[]
 }
 
@@ -60,7 +60,7 @@ export function Dashboard({
   currentEvent,
   managers,
   currentFixtures,
-  allMatches,
+  matches,
   pointsBreakdown,
   form,
   summerStandings,
@@ -68,13 +68,20 @@ export function Dashboard({
   entries,
   transactions,
   transactionsEvent,
-  whatIfSquads,
   luckMetrics,
 }: DashboardProps) {
   const [activeTab, setActiveTab] = useState('live')
   const [allPointsBreakdown, setAllPointsBreakdown] = useState<Record<number, Record<number, TeamPointsBreakdown>> | null>(null)
   const [breakdownLoading, setBreakdownLoading] = useState(false)
   const [breakdownError, setBreakdownError] = useState(false)
+  const [whatIfSquads, setWhatIfSquads] = useState<WhatIfSquad[] | null>(null)
+  const [whatIfLoading, setWhatIfLoading] = useState(false)
+  const [whatIfError, setWhatIfError] = useState(false)
+
+  const allMatches = useMemo(
+    () => processAllMatches({ league_entries: entries, matches } as import('@/lib/types').LeagueDetails),
+    [entries, matches]
+  )
 
   const fetchBreakdown = useCallback(async () => {
     if (allPointsBreakdown || breakdownLoading) return
@@ -92,11 +99,30 @@ export function Dashboard({
     }
   }, [allPointsBreakdown, breakdownLoading])
 
+  const fetchWhatIf = useCallback(async () => {
+    if (whatIfSquads || whatIfLoading) return
+    setWhatIfLoading(true)
+    setWhatIfError(false)
+    try {
+      const res = await fetch('/api/what-if')
+      if (!res.ok) throw new Error('Failed to fetch')
+      const data = await res.json()
+      setWhatIfSquads(data)
+    } catch {
+      setWhatIfError(true)
+    } finally {
+      setWhatIfLoading(false)
+    }
+  }, [whatIfSquads, whatIfLoading])
+
   useEffect(() => {
     if (activeTab === 'results') {
       fetchBreakdown()
     }
-  }, [activeTab, fetchBreakdown])
+    if (activeTab === 'whatif') {
+      fetchWhatIf()
+    }
+  }, [activeTab, fetchBreakdown, fetchWhatIf])
 
   return (
     <div className="min-h-screen">
@@ -177,7 +203,29 @@ export function Dashboard({
           )}
 
           {activeTab === 'whatif' && (
-            <WhatIf squads={whatIfSquads} />
+            whatIfLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="flex items-center gap-3 text-[var(--muted)]">
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span className="text-sm">Loading what-if data...</span>
+                </div>
+              </div>
+            ) : whatIfError ? (
+              <div className="bg-[var(--card)] rounded-xl border border-[var(--card-border)] p-8 text-center">
+                <p className="text-[var(--muted)] text-sm mb-3">Failed to load what-if data</p>
+                <button
+                  onClick={() => { setWhatIfError(false); fetchWhatIf() }}
+                  className="text-sm text-[var(--accent)] hover:underline"
+                >
+                  Try again
+                </button>
+              </div>
+            ) : whatIfSquads ? (
+              <WhatIf squads={whatIfSquads} />
+            ) : null
           )}
         </div>
       </main>
