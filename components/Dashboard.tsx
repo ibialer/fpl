@@ -11,6 +11,7 @@ import { Transactions } from './Transactions'
 import { Results } from './Results'
 import { UpcomingFixtures } from './UpcomingFixtures'
 import { WhatIf } from './WhatIf'
+import { PLMatches } from './PLMatches'
 import { LuckMetrics } from './LuckMetrics'
 import {
   ManagerWithSquad,
@@ -52,6 +53,7 @@ interface DashboardProps {
 const TABS = [
   { id: 'live', label: 'Live', icon: TabIcons.live },
   { id: 'results', label: 'Results', icon: TabIcons.results },
+  { id: 'plmatches', label: 'PL', icon: TabIcons.plmatches },
   { id: 'fixtures', label: 'Fixtures', icon: TabIcons.fixtures },
   { id: 'whatif', label: 'What If?', icon: TabIcons.whatif },
 ]
@@ -196,6 +198,10 @@ export function Dashboard({
             ) : (
               <Results matches={allMatches} currentEvent={currentEvent} allPointsBreakdown={allPointsBreakdown || {}} />
             )
+          )}
+
+          {activeTab === 'plmatches' && (
+            <PLMatches currentEvent={currentEvent} />
           )}
 
           {activeTab === 'fixtures' && (

@@ -87,6 +87,8 @@ export interface Fixture {
   team_h_score: number | null
   finished: boolean
   started: boolean
+  kickoff_time: string
+  minutes: number
 }
 
 export interface Events {
@@ -239,6 +241,7 @@ export interface LiveElement {
     own_goals: number
     penalties_missed: number
     penalties_saved: number
+    bps: number
     saves: number
     minutes: number
     // Defensive stats
@@ -334,6 +337,43 @@ export interface WhatIfPlayer {
   teamShortName: string
   totalPoints: number
   draftRound: number
+}
+
+// PL Matches types
+export interface PLFixturePlayer {
+  id: number
+  web_name: string
+  position: string
+  team: number
+  bps: number
+  bonus: number
+  minutes: number
+  goals_scored: number
+  assists: number
+  clean_sheets: number
+  defensive_contribution: number
+}
+
+export interface PLFixtureWithDetails {
+  id: number
+  event: number
+  homeTeam: { id: number; name: string; shortName: string }
+  awayTeam: { id: number; name: string; shortName: string }
+  homeScore: number | null
+  awayScore: number | null
+  kickoffTime: string
+  minutes: number
+  started: boolean
+  finished: boolean
+  homePlayers: PLFixturePlayer[]
+  awayPlayers: PLFixturePlayer[]
+}
+
+export interface PLMatchesResponse {
+  event: number
+  totalEvents: number
+  currentEvent: number
+  fixtures: PLFixtureWithDetails[]
 }
 
 // Deadline info
