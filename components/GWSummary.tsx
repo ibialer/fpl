@@ -90,23 +90,15 @@ function ErrorState({ message, onRetry }: { message: string; onRetry?: () => voi
 
 // Summary content
 function SummaryContent({ text, streaming }: { text: string; streaming?: boolean }) {
-  const sentences = text.split(/(?<=[.!?])\s+/).filter(Boolean)
-
   return (
     <div className="flex items-start gap-3">
       <AIIcon isLoading={streaming} />
       <div className="flex-1 min-w-0">
-        <div className="text-sm leading-relaxed">
-          {sentences.map((sentence, index) => (
-            <span
-              key={index}
-              className="inline animate-fade-in"
-              style={{ animationDelay: `${index * 100}ms` }}
-            >
-              {sentence}{' '}
-            </span>
-          ))}
-          {streaming && <span className="inline-block w-1.5 h-4 bg-[var(--accent)] animate-pulse align-text-bottom" />}
+        <div className={`text-sm leading-relaxed whitespace-pre-wrap ${!streaming ? 'animate-fade-in' : ''}`}>
+          {text}
+          {streaming && (
+            <span className="inline-block w-1.5 h-4 bg-[var(--accent)] rounded-sm animate-pulse align-text-bottom ml-0.5" />
+          )}
         </div>
       </div>
     </div>
