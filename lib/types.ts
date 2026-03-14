@@ -86,6 +86,7 @@ export interface Fixture {
   team_a_score: number | null
   team_h_score: number | null
   finished: boolean
+  finished_provisional: boolean
   started: boolean
   kickoff_time: string
   minutes: number
@@ -261,6 +262,7 @@ export interface LiveFixture {
   team_a_score: number | null
   team_h_score: number | null
   finished: boolean
+  finished_provisional: boolean
   started: boolean
   kickoff_time: string
   minutes: number
@@ -356,6 +358,7 @@ export interface PLFixturePlayer {
   assists: number
   clean_sheets: number
   defensive_contribution: number
+  owner: string | null
 }
 
 export interface PLFixtureWithDetails {
@@ -366,9 +369,9 @@ export interface PLFixtureWithDetails {
   homeScore: number | null
   awayScore: number | null
   kickoffTime: string
-  minutes: number
   started: boolean
   finished: boolean
+  finishedProvisional: boolean
   homePlayers: PLFixturePlayer[]
   awayPlayers: PLFixturePlayer[]
 }

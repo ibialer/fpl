@@ -9,16 +9,19 @@ interface PLMatchesProps {
 }
 
 function StatusBadge({ fixture }: { fixture: PLFixtureWithDetails }) {
-  if (fixture.started && !fixture.finished) {
+  if (fixture.finished) {
+    return <span className="text-xs font-semibold text-[var(--muted)]">FT</span>
+  }
+  if (fixture.finishedProvisional) {
+    return <span className="text-xs font-semibold text-[var(--muted)]">FT</span>
+  }
+  if (fixture.started) {
     return (
       <span className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--success)]">
         <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)] animate-pulse" />
-        LIVE {fixture.minutes}&apos;
+        LIVE
       </span>
     )
-  }
-  if (fixture.finished) {
-    return <span className="text-xs font-semibold text-[var(--muted)]">FT</span>
   }
   const time = new Date(fixture.kickoffTime)
   return (
@@ -47,6 +50,14 @@ function PlayerRow({ player, isTop3 }: { player: PLFixturePlayer; isTop3: boolea
     <div className="flex items-center gap-2 py-1 px-2 text-sm">
       <PositionBadge position={player.position} />
       <span className="flex-1 truncate">{player.web_name}</span>
+      {player.owner && (
+        <span
+          className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-[var(--accent)]/15 text-[var(--accent)]"
+          title={`Owned by ${player.owner}`}
+        >
+          {player.owner}
+        </span>
+      )}
       {player.goals_scored > 0 && (
         <span className="text-xs text-[var(--accent)]" title="Goals">
           {Array(player.goals_scored).fill('⚽').join('')}

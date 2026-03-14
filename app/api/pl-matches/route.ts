@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import {
   fetchBootstrapStatic,
   fetchLiveEvent,
+  fetchLeagueDetails,
+  fetchElementStatus,
   getCurrentEvent,
   getPositionName,
 } from '@/lib/api'
@@ -27,6 +29,25 @@ export async function GET(request: NextRequest) {
 
     // Build player lookup
     const playerMap = new Map(bootstrapStatic.elements.map((p) => [p.id, p]))
+
+    // For current GW, fetch ownership data to show which manager owns each player
+    let ownerMap: Map<number, string> | null = null
+    if (event === currentEvent) {
+      const [leagueDetails, elementStatus] = await Promise.all([
+        fetchLeagueDetails(),
+        fetchElementStatus(),
+      ])
+      const entryIdToName = new Map(
+        leagueDetails.league_entries.map((e) => [e.entry_id, e.player_first_name])
+      )
+      ownerMap = new Map<number, string>()
+      for (const es of elementStatus.element_status) {
+        if (es.owner) {
+          const name = entryIdToName.get(es.owner)
+          if (name) ownerMap.set(es.element, name)
+        }
+      }
+    }
 
     // Try to fetch live data — this is the primary source for current/past GW fixtures
     // bootstrap-static only has future GW fixtures
@@ -72,6 +93,7 @@ export async function GET(request: NextRequest) {
             assists: element.stats.assists,
             clean_sheets: element.stats.clean_sheets,
             defensive_contribution: element.stats.defensive_contribution || 0,
+            owner: ownerMap?.get(player.id) || null,
           }
 
           if (player.team === fixture.team_h) {
@@ -111,9 +133,9 @@ export async function GET(request: NextRequest) {
         homeScore: f.team_h_score,
         awayScore: f.team_a_score,
         kickoffTime: f.kickoff_time,
-        minutes: f.minutes,
         started: f.started,
         finished: f.finished,
+        finishedProvisional: f.finished_provisional,
         homePlayers,
         awayPlayers,
       }
