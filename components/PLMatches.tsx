@@ -91,6 +91,12 @@ function PlayerRow({
             +{player.bonus}
           </span>
         )}
+        <span
+          className="text-[10px] font-medium px-1 py-0.5 rounded bg-[var(--card-border)] text-[var(--muted)]"
+          title="Defensive contribution"
+        >
+          DC:{player.defensive_contribution}
+        </span>
       </div>
 
       {/* BPS value */}
