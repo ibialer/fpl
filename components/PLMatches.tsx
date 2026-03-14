@@ -9,15 +9,12 @@ interface PLMatchesProps {
 }
 
 function StatusBadge({ fixture }: { fixture: PLFixtureWithDetails }) {
-  if (fixture.finished) {
-    return <span className="text-xs font-semibold text-[var(--muted)]">FT</span>
-  }
-  if (fixture.finishedProvisional) {
-    return <span className="text-xs font-semibold text-[var(--muted)]">FT</span>
+  if (fixture.finished || fixture.finishedProvisional) {
+    return <span className="text-xs font-semibold text-[var(--muted)] min-w-[40px] text-center">FT</span>
   }
   if (fixture.started) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--success)]">
+      <span className="inline-flex items-center justify-center gap-1 text-xs font-semibold text-[var(--success)] min-w-[40px]">
         <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)] animate-pulse" />
         LIVE
       </span>
@@ -25,7 +22,7 @@ function StatusBadge({ fixture }: { fixture: PLFixtureWithDetails }) {
   }
   const time = new Date(fixture.kickoffTime)
   return (
-    <span className="text-xs text-[var(--muted)]">
+    <span className="text-xs text-[var(--muted)] min-w-[40px] text-center">
       {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
     </span>
   )
@@ -68,14 +65,12 @@ function PlayerRow({ player, isTop3 }: { player: PLFixturePlayer; isTop3: boolea
           {Array(player.assists).fill('🅰️').join('')}
         </span>
       )}
-      {player.defensive_contribution > 0 && (
-        <span
-          className="text-[10px] font-medium px-1 py-0.5 rounded bg-[var(--card-border)] text-[var(--muted)]"
-          title="Defensive contribution"
-        >
-          DC {player.defensive_contribution}
-        </span>
-      )}
+      <span
+        className="text-[10px] font-medium px-1 py-0.5 rounded bg-[var(--card-border)] text-[var(--muted)]"
+        title="Defensive contribution"
+      >
+        DC:{player.defensive_contribution}
+      </span>
       <span
         className={`text-xs font-bold min-w-[28px] text-right ${
           isTop3 ? 'text-[var(--warning)]' : 'text-[var(--foreground)]'
@@ -106,36 +101,41 @@ function FixtureCard({
       <button
         onClick={onToggle}
         disabled={!hasPlayers}
-        className={`w-full px-4 py-3 flex items-center justify-between touch-target ${
+        className={`w-full px-4 py-3 grid grid-cols-[auto_1fr_auto_1fr_auto] items-center gap-2 sm:gap-3 touch-target ${
           hasPlayers ? 'hover:bg-[var(--card-border)]/30 cursor-pointer' : 'cursor-default'
         }`}
       >
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          {/* Home team */}
-          <div className="flex items-center gap-2 flex-1 justify-end min-w-0">
-            <span className="text-sm truncate hidden sm:inline">{fixture.homeTeam.name}</span>
-            <span className="text-xs font-bold text-[var(--muted)] w-8 text-right">{fixture.homeTeam.shortName}</span>
-          </div>
-
-          {/* Score or vs */}
-          <div className="flex items-center gap-2 shrink-0">
-            {fixture.started ? (
-              <span className="text-base font-bold min-w-[50px] text-center">
-                {fixture.homeScore} - {fixture.awayScore}
-              </span>
-            ) : (
-              <span className="text-xs text-[var(--muted)] min-w-[50px] text-center">vs</span>
-            )}
-          </div>
-
-          {/* Away team */}
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <span className="text-xs font-bold text-[var(--muted)] w-8">{fixture.awayTeam.shortName}</span>
-            <span className="text-sm truncate hidden sm:inline">{fixture.awayTeam.name}</span>
-          </div>
+        {/* Left spacer — mirrors status+chevron width for centering */}
+        <div className="flex items-center gap-1 sm:gap-2 invisible">
+          <span className="text-xs font-semibold min-w-[40px]">FT</span>
+          <svg className="w-4 h-4" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" /></svg>
         </div>
 
-        <div className="flex items-center gap-2 ml-3 shrink-0 w-[72px] justify-end">
+        {/* Home team */}
+        <div className="flex items-center gap-2 justify-end min-w-0">
+          <span className="text-sm truncate hidden sm:inline">{fixture.homeTeam.name}</span>
+          <span className="text-xs font-bold text-[var(--muted)] shrink-0">{fixture.homeTeam.shortName}</span>
+        </div>
+
+        {/* Score or vs */}
+        <div className="shrink-0">
+          {fixture.started ? (
+            <span className="text-base font-bold min-w-[50px] text-center block">
+              {fixture.homeScore} - {fixture.awayScore}
+            </span>
+          ) : (
+            <span className="text-xs text-[var(--muted)] min-w-[50px] text-center block">vs</span>
+          )}
+        </div>
+
+        {/* Away team */}
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-xs font-bold text-[var(--muted)] shrink-0">{fixture.awayTeam.shortName}</span>
+          <span className="text-sm truncate hidden sm:inline">{fixture.awayTeam.name}</span>
+        </div>
+
+        {/* Status + chevron */}
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <StatusBadge fixture={fixture} />
           {hasPlayers && (
             <svg
