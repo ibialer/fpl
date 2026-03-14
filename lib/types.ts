@@ -258,8 +258,12 @@ export interface LiveFixture {
   event: number
   team_a: number
   team_h: number
+  team_a_score: number | null
+  team_h_score: number | null
   finished: boolean
   started: boolean
+  kickoff_time: string
+  minutes: number
 }
 
 // Processed types for points breakdown

@@ -28,16 +28,17 @@ export async function GET(request: NextRequest) {
     // Build player lookup
     const playerMap = new Map(bootstrapStatic.elements.map((p) => [p.id, p]))
 
-    // Get fixtures for this GW
-    const gwFixtures = bootstrapStatic.fixtures[String(event)] || []
-
-    // Try to fetch live data (will fail for future GWs)
+    // Try to fetch live data — this is the primary source for current/past GW fixtures
+    // bootstrap-static only has future GW fixtures
     let liveData: Awaited<ReturnType<typeof fetchLiveEvent>> | null = null
     try {
       liveData = await fetchLiveEvent(event)
     } catch {
       // No live data for future gameweeks
     }
+
+    // Get fixtures: prefer live data (has current/past GWs), fall back to bootstrap (future GWs)
+    const gwFixtures = liveData?.fixtures || bootstrapStatic.fixtures[String(event)] || []
 
     // Pre-group live players by fixture ID for O(n+m) lookup
     const playersByFixture = new Map<number, { home: PLFixturePlayer[]; away: PLFixturePlayer[] }>()
