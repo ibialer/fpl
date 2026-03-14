@@ -13,6 +13,14 @@ import {
   getPositionName,
   getTransactionsEvent,
   getDeadlineInfo,
+  fetchLeagueDetails,
+  fetchElementStatus,
+  fetchBootstrapStatic,
+  fetchTransactions,
+  fetchEntryPicks,
+  fetchLiveEvent,
+  fetchDraftChoices,
+  fetchAllData,
 } from './api'
 import {
   LeagueDetails,
@@ -914,5 +922,192 @@ describe('getDeadlineInfo', () => {
     expect(result.nextEvent).toBe(1)
     expect(result.waiverDeadline).toBeNull()
     expect(result.lineupDeadline).toBeNull()
+  })
+})
+
+// ===== Fetch Function Tests =====
+describe('fetch functions', () => {
+  const mockFetch = vi.fn()
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', mockFetch)
+    // Simulate server-side (no window)
+    vi.stubGlobal('window', undefined)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    mockFetch.mockReset()
+  })
+
+  const mockResponse = (data: unknown, ok = true) => ({
+    ok,
+    json: () => Promise.resolve(data),
+  })
+
+  describe('fetchLeagueDetails', () => {
+    it('fetches league details from FPL API', async () => {
+      const mockData = createMockLeagueDetails()
+      mockFetch.mockResolvedValue(mockResponse(mockData))
+
+      const result = await fetchLeagueDetails()
+      expect(result).toEqual(mockData)
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/league/37265/details'),
+        expect.objectContaining({ cache: 'no-store' })
+      )
+    })
+
+    it('throws on non-ok response', async () => {
+      mockFetch.mockResolvedValue(mockResponse(null, false))
+      await expect(fetchLeagueDetails()).rejects.toThrow('Failed to fetch league details')
+    })
+  })
+
+  describe('fetchElementStatus', () => {
+    it('fetches element status', async () => {
+      const mockData = { element_status: [] }
+      mockFetch.mockResolvedValue(mockResponse(mockData))
+
+      const result = await fetchElementStatus()
+      expect(result).toEqual(mockData)
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/league/37265/element-status'),
+        expect.any(Object)
+      )
+    })
+
+    it('throws on non-ok response', async () => {
+      mockFetch.mockResolvedValue(mockResponse(null, false))
+      await expect(fetchElementStatus()).rejects.toThrow('Failed to fetch element status')
+    })
+  })
+
+  describe('fetchBootstrapStatic', () => {
+    it('fetches bootstrap static data', async () => {
+      const mockData = createMockBootstrapStatic()
+      mockFetch.mockResolvedValue(mockResponse(mockData))
+
+      const result = await fetchBootstrapStatic()
+      expect(result).toEqual(mockData)
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/bootstrap-static'),
+        expect.any(Object)
+      )
+    })
+
+    it('throws on non-ok response', async () => {
+      mockFetch.mockResolvedValue(mockResponse(null, false))
+      await expect(fetchBootstrapStatic()).rejects.toThrow('Failed to fetch bootstrap data')
+    })
+  })
+
+  describe('fetchTransactions', () => {
+    it('fetches transactions', async () => {
+      const mockData = { transactions: [] }
+      mockFetch.mockResolvedValue(mockResponse(mockData))
+
+      const result = await fetchTransactions()
+      expect(result).toEqual(mockData)
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/draft/league/37265/transactions'),
+        expect.any(Object)
+      )
+    })
+
+    it('throws on non-ok response', async () => {
+      mockFetch.mockResolvedValue(mockResponse(null, false))
+      await expect(fetchTransactions()).rejects.toThrow('Failed to fetch transactions')
+    })
+  })
+
+  describe('fetchEntryPicks', () => {
+    it('fetches picks for a specific entry and event', async () => {
+      const mockData = { picks: [{ element: 1, position: 1, is_captain: false, is_vice_captain: false, multiplier: 1 }] }
+      mockFetch.mockResolvedValue(mockResponse(mockData))
+
+      const result = await fetchEntryPicks(100, 21)
+      expect(result).toEqual(mockData)
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/entry/100/event/21'),
+        expect.any(Object)
+      )
+    })
+
+    it('throws on non-ok response', async () => {
+      mockFetch.mockResolvedValue(mockResponse(null, false))
+      await expect(fetchEntryPicks(100, 21)).rejects.toThrow('Failed to fetch picks for entry 100')
+    })
+  })
+
+  describe('fetchLiveEvent', () => {
+    it('fetches live event data', async () => {
+      const mockData = { elements: {}, fixtures: [] }
+      mockFetch.mockResolvedValue(mockResponse(mockData))
+
+      const result = await fetchLiveEvent(21)
+      expect(result).toEqual(mockData)
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/event/21/live'),
+        expect.any(Object)
+      )
+    })
+
+    it('throws on non-ok response', async () => {
+      mockFetch.mockResolvedValue(mockResponse(null, false))
+      await expect(fetchLiveEvent(21)).rejects.toThrow('Failed to fetch live data for event 21')
+    })
+  })
+
+  describe('fetchDraftChoices', () => {
+    it('fetches draft choices', async () => {
+      const mockData = { choices: [] }
+      mockFetch.mockResolvedValue(mockResponse(mockData))
+
+      const result = await fetchDraftChoices()
+      expect(result).toEqual(mockData)
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/draft/37265/choices'),
+        expect.any(Object)
+      )
+    })
+
+    it('throws on non-ok response', async () => {
+      mockFetch.mockResolvedValue(mockResponse(null, false))
+      await expect(fetchDraftChoices()).rejects.toThrow('Failed to fetch draft choices')
+    })
+  })
+
+  describe('fetchAllData', () => {
+    it('fetches all data in parallel', async () => {
+      const leagueDetails = createMockLeagueDetails()
+      const elementStatus = { element_status: [] }
+      const bootstrapStatic = createMockBootstrapStatic()
+      const transactions = { transactions: [] }
+
+      // fetchAllData calls 4 fetch functions in parallel
+      mockFetch
+        .mockResolvedValueOnce(mockResponse(leagueDetails))
+        .mockResolvedValueOnce(mockResponse(elementStatus))
+        .mockResolvedValueOnce(mockResponse(bootstrapStatic))
+        .mockResolvedValueOnce(mockResponse(transactions))
+
+      const result = await fetchAllData()
+      expect(result.leagueDetails).toEqual(leagueDetails)
+      expect(result.elementStatus).toEqual(elementStatus)
+      expect(result.bootstrapStatic).toEqual(bootstrapStatic)
+      expect(result.transactions).toEqual(transactions)
+      expect(mockFetch).toHaveBeenCalledTimes(4)
+    })
+
+    it('rejects if any fetch fails', async () => {
+      mockFetch
+        .mockResolvedValueOnce(mockResponse(createMockLeagueDetails()))
+        .mockResolvedValueOnce(mockResponse(null, false)) // element status fails
+        .mockResolvedValueOnce(mockResponse(createMockBootstrapStatic()))
+        .mockResolvedValueOnce(mockResponse({ transactions: [] }))
+
+      await expect(fetchAllData()).rejects.toThrow()
+    })
   })
 })

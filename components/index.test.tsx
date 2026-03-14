@@ -586,6 +586,354 @@ describe('RefreshButton', () => {
   })
 })
 
+// ===== GW SUMMARY =====
+import { GWSummary } from './GWSummary'
+
+describe('GWSummary', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  const defaultProps = {
+    currentEvent: 21,
+    fixtures: [] as import('@/lib/types').FixtureWithNames[],
+    pointsBreakdown: {},
+  }
+
+  it('renders header with AI Summary and GW number', () => {
+    // Mock fetch to return a pending promise (stays in loading state)
+    ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockReturnValue(new Promise(() => {}))
+    render(<GWSummary {...defaultProps} />)
+    expect(screen.getByText('AI Summary')).toBeInTheDocument()
+    expect(screen.getByText('GW 21')).toBeInTheDocument()
+  })
+
+  it('shows loading skeleton initially', () => {
+    ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockReturnValue(new Promise(() => {}))
+    render(<GWSummary {...defaultProps} />)
+    expect(screen.getByLabelText('Loading summary')).toBeInTheDocument()
+  })
+
+  it('shows error state on fetch failure', async () => {
+    ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network error'))
+    render(<GWSummary {...defaultProps} />)
+    await waitFor(() => {
+      expect(screen.getByText('Could not load AI summary')).toBeInTheDocument()
+    })
+  })
+
+  it('shows retry button on error', async () => {
+    ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('fail'))
+    render(<GWSummary {...defaultProps} />)
+    await waitFor(() => {
+      expect(screen.getByText('Try again')).toBeInTheDocument()
+    })
+  })
+
+  it('shows quick stats for live and completed matches', () => {
+    ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockReturnValue(new Promise(() => {}))
+    const fixtures = [
+      { event: 21, team1Id: 1, team1Name: 'A', team1PlayerName: 'P', team1Points: 50, team2Id: 2, team2Name: 'B', team2PlayerName: 'Q', team2Points: 40, finished: true, started: true, winner: 'A' },
+      { event: 21, team1Id: 3, team1Name: 'C', team1PlayerName: 'R', team1Points: 30, team2Id: 4, team2Name: 'D', team2PlayerName: 'S', team2Points: 20, finished: false, started: true, winner: null },
+    ]
+    render(<GWSummary {...defaultProps} fixtures={fixtures} />)
+    expect(screen.getByText('1 live')).toBeInTheDocument()
+    expect(screen.getByText('1 completed')).toBeInTheDocument()
+  })
+
+  it('renders footer disclaimer', () => {
+    ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockReturnValue(new Promise(() => {}))
+    render(<GWSummary {...defaultProps} />)
+    expect(screen.getByText('AI-generated summary based on current gameweek data')).toBeInTheDocument()
+  })
+})
+
+// ===== RESULTS (expanded) =====
+describe('Results (expanded)', () => {
+  const createMatch = (event: number, finished: boolean, team1Id = 1, team2Id = 2) => ({
+    event, team1Id, team1Name: `Team${team1Id}`, team1PlayerName: `Player${team1Id}`,
+    team1Points: 50, team2Id, team2Name: `Team${team2Id}`, team2PlayerName: `Player${team2Id}`,
+    team2Points: 40, finished, started: finished, winner: finished ? `Team${team1Id}` : null,
+  })
+
+  it('renders team filter dropdown', () => {
+    render(<Results matches={[createMatch(20, true)]} currentEvent={21} allPointsBreakdown={{}} />)
+    expect(screen.getByText('Filter by team')).toBeInTheDocument()
+    expect(screen.getByLabelText('Select team filter')).toBeInTheDocument()
+  })
+
+  it('opens team filter and shows team options', () => {
+    render(<Results matches={[createMatch(20, true)]} currentEvent={21} allPointsBreakdown={{}} />)
+    fireEvent.click(screen.getByLabelText('Select team filter'))
+    // "All Teams" appears in both button text and dropdown option
+    expect(screen.getAllByText('All Teams').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByRole('option', { name: 'Team1' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Team2' })).toBeInTheDocument()
+  })
+
+  it('filters results by selected team', () => {
+    const matches = [
+      createMatch(20, true, 1, 2),
+      createMatch(20, true, 3, 4),
+    ]
+    const { container } = render(<Results matches={matches} currentEvent={21} allPointsBreakdown={{}} />)
+    // Both matches visible initially
+    expect(container.textContent).toContain('Team1')
+    expect(container.textContent).toContain('Team3')
+
+    // Filter by Team1
+    fireEvent.click(screen.getByLabelText('Select team filter'))
+    fireEvent.click(screen.getByRole('option', { name: 'Team1' }))
+    // Team3 match should be hidden
+    expect(container.textContent).toContain('Team1')
+    expect(container.textContent).not.toContain('Team3')
+  })
+
+  it('shows expanded breakdown when match has breakdown data', () => {
+    const match = createMatch(20, true)
+    const breakdown = {
+      20: {
+        1: { entryId: 1, teamName: 'Team1', playerName: 'Player1', totalPoints: 50, players: [] },
+        2: { entryId: 2, teamName: 'Team2', playerName: 'Player2', totalPoints: 40, players: [] },
+      },
+    }
+    const { container } = render(<Results matches={[match]} currentEvent={21} allPointsBreakdown={breakdown} />)
+    // "View Players" button should exist
+    expect(container.textContent).toContain('View')
+    // Click to expand
+    const buttons = container.querySelectorAll('button')
+    const viewButton = Array.from(buttons).find(b => b.textContent?.includes('View'))
+    if (viewButton) fireEvent.click(viewButton)
+    // Breakdown team names should appear
+    expect(container.textContent).toContain('Team1')
+  })
+
+  it('highlights winning team name', () => {
+    const match = { ...createMatch(20, true), team1Points: 60, team2Points: 35 }
+    const { container } = render(<Results matches={[match]} currentEvent={21} allPointsBreakdown={{}} />)
+    const team1Elements = container.querySelectorAll('.text-\\[var\\(--success\\)\\]')
+    expect(team1Elements.length).toBeGreaterThan(0)
+  })
+
+  it('closes team filter dropdown on Escape key', () => {
+    render(<Results matches={[createMatch(20, true)]} currentEvent={21} allPointsBreakdown={{}} />)
+    fireEvent.click(screen.getByLabelText('Select team filter'))
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+})
+
+// ===== UPCOMING FIXTURES (expanded) =====
+describe('UpcomingFixtures (expanded)', () => {
+  const createUpcomingMatch = (event: number, team1Id = 1, team2Id = 2) => ({
+    event, team1Id, team1Name: `Team${team1Id}`, team1PlayerName: `Player${team1Id}`,
+    team1Points: 0, team2Id, team2Name: `Team${team2Id}`, team2PlayerName: `Player${team2Id}`,
+    team2Points: 0, finished: false, started: false, winner: null,
+  })
+
+  it('renders team filter dropdown', () => {
+    render(<UpcomingFixtures matches={[createUpcomingMatch(22)]} currentEvent={21} />)
+    expect(screen.getByText('Filter by team')).toBeInTheDocument()
+  })
+
+  it('filters fixtures by selected team', () => {
+    const matches = [
+      createUpcomingMatch(22, 1, 2),
+      createUpcomingMatch(22, 3, 4),
+    ]
+    const { container } = render(<UpcomingFixtures matches={matches} currentEvent={21} />)
+    expect(container.textContent).toContain('Team3')
+
+    fireEvent.click(screen.getByLabelText('Select team filter'))
+    fireEvent.click(screen.getByRole('option', { name: 'Team1' }))
+    expect(container.textContent).not.toContain('Team3')
+  })
+
+  it('shows match count per gameweek', () => {
+    const matches = [
+      createUpcomingMatch(22, 1, 2),
+      createUpcomingMatch(22, 3, 4),
+    ]
+    render(<UpcomingFixtures matches={matches} currentEvent={21} />)
+    expect(screen.getByText('2 matches')).toBeInTheDocument()
+  })
+
+  it('shows singular "match" for single fixture', () => {
+    render(<UpcomingFixtures matches={[createUpcomingMatch(22)]} currentEvent={21} />)
+    expect(screen.getByText('1 match')).toBeInTheDocument()
+  })
+
+  it('shows summary footer with total count', () => {
+    const matches = [createUpcomingMatch(22), createUpcomingMatch(23)]
+    render(<UpcomingFixtures matches={matches} currentEvent={21} />)
+    expect(screen.getByText('Total upcoming matches')).toBeInTheDocument()
+    // Should show count = 2
+    const { container } = render(<UpcomingFixtures matches={matches} currentEvent={21} />)
+    expect(container.textContent).toContain('2')
+  })
+
+  it('shows team-specific info in footer when filtered', () => {
+    const matches = [createUpcomingMatch(22, 1, 2), createUpcomingMatch(23, 1, 3)]
+    render(<UpcomingFixtures matches={matches} currentEvent={21} />)
+    fireEvent.click(screen.getByLabelText('Select team filter'))
+    fireEvent.click(screen.getByRole('option', { name: 'Team1' }))
+    expect(screen.getByText(/For Team1/)).toBeInTheDocument()
+  })
+
+  it('renders VS badge in fixture card', () => {
+    render(<UpcomingFixtures matches={[createUpcomingMatch(22)]} currentEvent={21} />)
+    expect(screen.getByText('VS')).toBeInTheDocument()
+  })
+
+  it('shows player names in fixture cards', () => {
+    render(<UpcomingFixtures matches={[createUpcomingMatch(22)]} currentEvent={21} />)
+    expect(screen.getByText('Player1')).toBeInTheDocument()
+    expect(screen.getByText('Player2')).toBeInTheDocument()
+  })
+
+  it('groups multiple gameweeks correctly', () => {
+    const matches = [
+      createUpcomingMatch(22, 1, 2),
+      createUpcomingMatch(23, 1, 2),
+      createUpcomingMatch(24, 1, 2),
+    ]
+    render(<UpcomingFixtures matches={matches} currentEvent={21} />)
+    expect(screen.getByText('Gameweek 22')).toBeInTheDocument()
+    expect(screen.getByText('Gameweek 23')).toBeInTheDocument()
+    expect(screen.getByText('Gameweek 24')).toBeInTheDocument()
+  })
+})
+
+// ===== PL MATCHES (full component) =====
+import { PLMatches } from './PLMatches'
+
+describe('PLMatches (component)', () => {
+  const originalFetch = globalThis.fetch
+
+  beforeEach(() => {
+    globalThis.fetch = vi.fn()
+  })
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+  })
+
+  const createPLMatchesResponse = () => ({
+    event: 21,
+    totalEvents: 38,
+    currentEvent: 21,
+    fixtures: [
+      {
+        id: 1, event: 21,
+        homeTeam: { id: 1, name: 'Arsenal', shortName: 'ARS' },
+        awayTeam: { id: 2, name: 'Chelsea', shortName: 'CHE' },
+        homeScore: 2, awayScore: 1,
+        kickoffTime: '2024-01-13T15:00:00Z',
+        started: true, finished: true, finishedProvisional: true,
+        homePlayers: [
+          { id: 1, web_name: 'Saka', position: 'MID', team: 1, bps: 35, bonus: 3, minutes: 90, goals_scored: 1, assists: 1, clean_sheets: 0, defensive_contribution: 2, owner: 'Manager1' },
+          { id: 2, web_name: 'Rice', position: 'MID', team: 1, bps: 20, bonus: 0, minutes: 90, goals_scored: 0, assists: 0, clean_sheets: 0, defensive_contribution: 5, owner: null },
+        ],
+        awayPlayers: [
+          { id: 3, web_name: 'Palmer', position: 'MID', team: 2, bps: 28, bonus: 1, minutes: 90, goals_scored: 1, assists: 0, clean_sheets: 0, defensive_contribution: 0, owner: 'Manager2' },
+        ],
+      },
+    ],
+  })
+
+  it('shows loading skeleton and GW navigation initially', () => {
+    ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockReturnValue(new Promise(() => {}))
+    render(<PLMatches currentEvent={21} />)
+    expect(screen.getByText('Gameweek 21')).toBeInTheDocument()
+    expect(screen.getByLabelText('Previous gameweek')).toBeInTheDocument()
+    expect(screen.getByLabelText('Next gameweek')).toBeInTheDocument()
+  })
+
+  it('shows error state on fetch failure', async () => {
+    ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({ ok: false })
+    render(<PLMatches currentEvent={21} />)
+    await waitFor(() => {
+      expect(screen.getByText('Failed to load PL fixtures')).toBeInTheDocument()
+      expect(screen.getByText('Try again')).toBeInTheDocument()
+    })
+  })
+
+  it('renders fixtures after successful fetch', async () => {
+    const response = createPLMatchesResponse()
+    ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(response),
+    })
+    render(<PLMatches currentEvent={21} />)
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Arsenal vs Chelsea/)).toBeInTheDocument()
+    })
+    expect(screen.getByText(/2 - 1/)).toBeInTheDocument()
+  })
+
+  it('expands fixture to show player details with owner badges', async () => {
+    const response = createPLMatchesResponse()
+    ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(response),
+    })
+    render(<PLMatches currentEvent={21} />)
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Arsenal vs Chelsea/)).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByLabelText(/Arsenal vs Chelsea/))
+    expect(screen.getByText('Saka')).toBeInTheDocument()
+    expect(screen.getByText('Palmer')).toBeInTheDocument()
+    expect(screen.getByText('Manager1')).toBeInTheDocument()
+    expect(screen.getByText('Manager2')).toBeInTheDocument()
+  })
+
+  it('shows empty state when no fixtures in GW', async () => {
+    ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ event: 21, totalEvents: 38, currentEvent: 21, fixtures: [] }),
+    })
+    render(<PLMatches currentEvent={21} />)
+    await waitFor(() => {
+      expect(screen.getByText('No fixtures this week')).toBeInTheDocument()
+    })
+  })
+
+  it('shows bonus points and DC for players', async () => {
+    const response = createPLMatchesResponse()
+    ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(response),
+    })
+    render(<PLMatches currentEvent={21} />)
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Arsenal vs Chelsea/)).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByLabelText(/Arsenal vs Chelsea/))
+    // Saka has bonus=3
+    expect(screen.getByText('+3')).toBeInTheDocument()
+    // Rice has DC=5
+    expect(screen.getByText('DC:5')).toBeInTheDocument()
+  })
+
+  it('shows match count per day group', async () => {
+    const response = createPLMatchesResponse()
+    ;(globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(response),
+    })
+    render(<PLMatches currentEvent={21} />)
+    await waitFor(() => {
+      expect(screen.getByText('1 match')).toBeInTheDocument()
+    })
+  })
+})
+
 // ===== PL MATCHES (computeBpsStats) =====
 import { computeBpsStats } from './PLMatches'
 import { PLFixturePlayer } from '@/lib/types'
