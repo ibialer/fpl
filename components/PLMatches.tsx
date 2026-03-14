@@ -154,19 +154,13 @@ function FixtureRow({
         </div>
 
         {/* Score */}
-        <div className="flex items-center gap-2 px-3 shrink-0">
+        <div className="flex items-center justify-center shrink-0 w-[60px]">
           {fixture.started ? (
-            <>
-              <span className="text-lg font-bold min-w-[2ch] text-right tabular-nums">
-                {fixture.homeScore}
-              </span>
-              <span className="text-[var(--muted)] text-sm">-</span>
-              <span className="text-lg font-bold min-w-[2ch] text-left tabular-nums">
-                {fixture.awayScore}
-              </span>
-            </>
+            <span className="text-lg font-bold tabular-nums text-center">
+              {fixture.homeScore} - {fixture.awayScore}
+            </span>
           ) : (
-            <span className="text-xs text-[var(--muted)] min-w-[50px] text-center">vs</span>
+            <span className="text-xs text-[var(--muted)] text-center">vs</span>
           )}
         </div>
 
