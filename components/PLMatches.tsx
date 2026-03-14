@@ -172,57 +172,61 @@ function FixtureRow({
       <button
         onClick={onToggle}
         disabled={!hasPlayers}
-        className={`w-full px-4 py-3 transition-colors touch-target ${
+        className={`w-full px-4 py-3 grid grid-cols-[auto_1fr_auto_1fr_auto] items-center gap-2 sm:gap-3 transition-colors touch-target ${
           hasPlayers ? 'hover:bg-[var(--card-border)]/20 cursor-pointer' : 'cursor-default'
         }`}
         aria-expanded={expanded}
         aria-label={`${fixture.homeTeam.name} vs ${fixture.awayTeam.name}, tap to ${expanded ? 'hide' : 'show'} player details`}
       >
-        <div className="flex items-center justify-between gap-2">
-          {/* Home team */}
-          <div className="flex-1 text-right min-w-0">
-            <span className="text-sm font-medium truncate block">{fixture.homeTeam.shortName}</span>
-            <span className="text-xs text-[var(--muted)] truncate hidden sm:block">{fixture.homeTeam.name}</span>
-          </div>
+        {/* Left spacer — mirrors status+chevron width for centering */}
+        <div className="flex items-center gap-2 invisible">
+          <span className="text-[10px] font-semibold min-w-[40px]">FT</span>
+          <svg className="w-4 h-4" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" /></svg>
+        </div>
 
-          {/* Score */}
-          <div className="flex items-center gap-2 px-3 shrink-0">
-            {fixture.started ? (
-              <>
-                <span className="text-lg font-bold min-w-[2ch] text-right tabular-nums">
-                  {fixture.homeScore}
-                </span>
-                <span className="text-[var(--muted)] text-sm">-</span>
-                <span className="text-lg font-bold min-w-[2ch] text-left tabular-nums">
-                  {fixture.awayScore}
-                </span>
-              </>
-            ) : (
-              <span className="text-xs text-[var(--muted)] min-w-[50px] text-center">vs</span>
-            )}
-          </div>
+        {/* Home team */}
+        <div className="text-right min-w-0">
+          <span className="text-sm font-medium truncate block sm:hidden">{fixture.homeTeam.shortName}</span>
+          <span className="text-sm font-medium truncate hidden sm:block">{fixture.homeTeam.name}</span>
+        </div>
 
-          {/* Away team */}
-          <div className="flex-1 text-left min-w-0">
-            <span className="text-sm font-medium truncate block">{fixture.awayTeam.shortName}</span>
-            <span className="text-xs text-[var(--muted)] truncate hidden sm:block">{fixture.awayTeam.name}</span>
-          </div>
+        {/* Score */}
+        <div className="flex items-center gap-2 px-3 shrink-0">
+          {fixture.started ? (
+            <>
+              <span className="text-lg font-bold min-w-[2ch] text-right tabular-nums">
+                {fixture.homeScore}
+              </span>
+              <span className="text-[var(--muted)] text-sm">-</span>
+              <span className="text-lg font-bold min-w-[2ch] text-left tabular-nums">
+                {fixture.awayScore}
+              </span>
+            </>
+          ) : (
+            <span className="text-xs text-[var(--muted)] min-w-[50px] text-center">vs</span>
+          )}
+        </div>
 
-          {/* Status + chevron */}
-          <div className="flex items-center gap-2 shrink-0 min-w-[52px] justify-end">
-            <StatusBadge fixture={fixture} />
-            {hasPlayers && (
-              <svg
-                className={`w-4 h-4 text-[var(--muted)] transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
-            )}
-          </div>
+        {/* Away team */}
+        <div className="text-left min-w-0">
+          <span className="text-sm font-medium truncate block sm:hidden">{fixture.awayTeam.shortName}</span>
+          <span className="text-sm font-medium truncate hidden sm:block">{fixture.awayTeam.name}</span>
+        </div>
+
+        {/* Status + chevron */}
+        <div className="flex items-center gap-2 shrink-0 justify-end">
+          <StatusBadge fixture={fixture} />
+          {hasPlayers && (
+            <svg
+              className={`w-4 h-4 text-[var(--muted)] transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          )}
         </div>
       </button>
 
