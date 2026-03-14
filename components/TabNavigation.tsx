@@ -19,34 +19,26 @@ export function TabNavigation({ tabs, activeTab, onTabChange }: TabNavigationPro
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 })
   const innerContainerRef = useRef<HTMLDivElement>(null)
 
-  // Update indicator position when active tab changes
+  // Update indicator position and scroll active tab into view
   useEffect(() => {
     const activeIndex = tabs.findIndex((tab) => tab.id === activeTab)
     const activeTabElement = tabRefs.current[activeIndex]
+    if (!activeTabElement) return
 
-    if (activeTabElement && innerContainerRef.current) {
+    if (innerContainerRef.current) {
       const containerRect = innerContainerRef.current.getBoundingClientRect()
       const tabRect = activeTabElement.getBoundingClientRect()
-
       setIndicatorStyle({
         left: tabRect.left - containerRect.left,
         width: tabRect.width,
       })
     }
-  }, [activeTab, tabs])
 
-  // Scroll active tab into view on mobile
-  useEffect(() => {
-    const activeIndex = tabs.findIndex((tab) => tab.id === activeTab)
-    const activeTabElement = tabRefs.current[activeIndex]
-
-    if (activeTabElement) {
-      activeTabElement.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest',
-        inline: 'center',
-      })
-    }
+    activeTabElement.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest',
+      inline: 'center',
+    })
   }, [activeTab, tabs])
 
   return (

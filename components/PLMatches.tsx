@@ -28,7 +28,7 @@ function StatusBadge({ fixture }: { fixture: PLFixtureWithDetails }) {
   )
 }
 
-function getBpsRankings(home: PLFixturePlayer[], away: PLFixturePlayer[]): Map<number, number> {
+export function computeBpsStats(home: PLFixturePlayer[], away: PLFixturePlayer[]): { ranks: Map<number, number>; maxBps: number } {
   const all = [...home, ...away].filter(p => p.bps > 0).sort((a, b) => b.bps - a.bps)
   const ranks = new Map<number, number>()
   let rank = 1
@@ -38,14 +38,7 @@ function getBpsRankings(home: PLFixturePlayer[], away: PLFixturePlayer[]): Map<n
     }
     ranks.set(all[i].id, rank)
   }
-  return ranks
-}
-
-function getMaxBps(home: PLFixturePlayer[], away: PLFixturePlayer[]): number {
-  let max = 0
-  for (const p of home) if (p.bps > max) max = p.bps
-  for (const p of away) if (p.bps > max) max = p.bps
-  return max
+  return { ranks, maxBps: all[0]?.bps || 0 }
 }
 
 function PlayerRow({
@@ -112,7 +105,7 @@ function PlayerRow({
         )}
 
         {/* Clean sheet */}
-        {player.clean_sheets > 0 && (player.position === 'GKP' || player.position === 'DEF') && (
+        {player.clean_sheets > 0 && (player.position === 'GK' || player.position === 'DEF') && (
           <span
             className="inline-flex items-center text-[10px] text-[var(--success)] bg-[var(--success-muted)] px-1 py-0.5 rounded"
             title="Clean sheet"
@@ -166,12 +159,8 @@ function FixtureRow({
   onToggle: () => void
 }) {
   const hasPlayers = fixture.homePlayers.length > 0 || fixture.awayPlayers.length > 0
-  const bpsRanks = useMemo(
-    () => (expanded ? getBpsRankings(fixture.homePlayers, fixture.awayPlayers) : new Map()),
-    [expanded, fixture.homePlayers, fixture.awayPlayers]
-  )
-  const maxBps = useMemo(
-    () => (expanded ? getMaxBps(fixture.homePlayers, fixture.awayPlayers) : 0),
+  const bpsStats = useMemo(
+    () => (expanded ? computeBpsStats(fixture.homePlayers, fixture.awayPlayers) : { ranks: new Map<number, number>(), maxBps: 0 }),
     [expanded, fixture.homePlayers, fixture.awayPlayers]
   )
 
@@ -248,45 +237,29 @@ function FixtureRow({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Home players */}
-            <div>
-              <div className="flex items-center gap-2 mb-2 px-2.5">
-                <span className="text-[10px] font-semibold text-[var(--muted)] uppercase tracking-wide">
-                  {fixture.homeTeam.shortName}
-                </span>
-                <div className="flex-1 h-px bg-[var(--card-border)]" />
+            {[
+              { team: fixture.homeTeam, players: fixture.homePlayers },
+              { team: fixture.awayTeam, players: fixture.awayPlayers },
+            ].map(({ team, players }) => (
+              <div key={team.id}>
+                <div className="flex items-center gap-2 mb-2 px-2.5">
+                  <span className="text-[10px] font-semibold text-[var(--muted)] uppercase tracking-wide">
+                    {team.shortName}
+                  </span>
+                  <div className="flex-1 h-px bg-[var(--card-border)]" />
+                </div>
+                <div className="space-y-0.5">
+                  {players.map((p) => (
+                    <PlayerRow
+                      key={p.id}
+                      player={p}
+                      bpsRank={bpsStats.ranks.get(p.id)}
+                      maxBps={bpsStats.maxBps}
+                    />
+                  ))}
+                </div>
               </div>
-              <div className="space-y-0.5">
-                {fixture.homePlayers.map((p) => (
-                  <PlayerRow
-                    key={p.id}
-                    player={p}
-                    bpsRank={bpsRanks.get(p.id)}
-                    maxBps={maxBps}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Away players */}
-            <div>
-              <div className="flex items-center gap-2 mb-2 px-2.5">
-                <span className="text-[10px] font-semibold text-[var(--muted)] uppercase tracking-wide">
-                  {fixture.awayTeam.shortName}
-                </span>
-                <div className="flex-1 h-px bg-[var(--card-border)]" />
-              </div>
-              <div className="space-y-0.5">
-                {fixture.awayPlayers.map((p) => (
-                  <PlayerRow
-                    key={p.id}
-                    player={p}
-                    bpsRank={bpsRanks.get(p.id)}
-                    maxBps={maxBps}
-                  />
-                ))}
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       )}

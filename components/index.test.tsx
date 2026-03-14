@@ -396,3 +396,63 @@ describe('WhatIf', () => {
     expect(screen.getByText('Salah')).toBeInTheDocument()
   })
 })
+
+// ===== PL MATCHES (computeBpsStats) =====
+import { computeBpsStats } from './PLMatches'
+import { PLFixturePlayer } from '@/lib/types'
+
+function makePlayer(overrides: Partial<PLFixturePlayer> & { id: number; bps: number }): PLFixturePlayer {
+  return {
+    web_name: `Player${overrides.id}`,
+    position: 'MID',
+    team: 1,
+    bonus: 0,
+    minutes: 90,
+    goals_scored: 0,
+    assists: 0,
+    clean_sheets: 0,
+    defensive_contribution: 0,
+    owner: null,
+    ...overrides,
+  }
+}
+
+describe('computeBpsStats', () => {
+  it('ranks players by BPS descending across both teams', () => {
+    const home = [makePlayer({ id: 1, bps: 30 }), makePlayer({ id: 2, bps: 20 })]
+    const away = [makePlayer({ id: 3, bps: 25 }), makePlayer({ id: 4, bps: 15 })]
+    const { ranks, maxBps } = computeBpsStats(home, away)
+
+    expect(maxBps).toBe(30)
+    expect(ranks.get(1)).toBe(1)
+    expect(ranks.get(3)).toBe(2)
+    expect(ranks.get(2)).toBe(3)
+    expect(ranks.get(4)).toBe(4)
+  })
+
+  it('gives tied players the same rank', () => {
+    const home = [makePlayer({ id: 1, bps: 30 })]
+    const away = [makePlayer({ id: 2, bps: 30 }), makePlayer({ id: 3, bps: 10 })]
+    const { ranks } = computeBpsStats(home, away)
+
+    expect(ranks.get(1)).toBe(1)
+    expect(ranks.get(2)).toBe(1)
+    expect(ranks.get(3)).toBe(3)
+  })
+
+  it('excludes players with 0 BPS', () => {
+    const home = [makePlayer({ id: 1, bps: 10 })]
+    const away = [makePlayer({ id: 2, bps: 0 })]
+    const { ranks, maxBps } = computeBpsStats(home, away)
+
+    expect(maxBps).toBe(10)
+    expect(ranks.get(1)).toBe(1)
+    expect(ranks.has(2)).toBe(false)
+  })
+
+  it('handles empty player lists', () => {
+    const { ranks, maxBps } = computeBpsStats([], [])
+    expect(maxBps).toBe(0)
+    expect(ranks.size).toBe(0)
+  })
+})
