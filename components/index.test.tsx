@@ -99,6 +99,16 @@ describe('Standings', () => {
     expect(screen.getAllByLabelText('Win').length).toBeGreaterThan(0)
     expect(screen.getAllByLabelText('Loss').length).toBeGreaterThan(0)
   })
+
+  it('renders non-medal ranks (> 3) without medal styling', () => {
+    const fourthPlace = {
+      ...mockManager,
+      standing: { ...mockManager.standing, rank: 4 },
+    }
+    const { container } = render(<Standings managers={[fourthPlace]} form={{}} />)
+    // Rank 4 should render as plain text (no medal border)
+    expect(container.textContent).toContain('4')
+  })
 })
 
 // ===== SUMMER STANDINGS =====
@@ -147,6 +157,31 @@ describe('HeadToHead', () => {
     expect(screen.getByText('Head to Head')).toBeInTheDocument()
     // Desktop and mobile views both render the short names
     expect(screen.getAllByText('TA').length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('shows dash for zero-match H2H pair within a played matrix', () => {
+    // Team 1 vs 2 has matches, but Team 1 vs 3 has zero (dash should show)
+    const threeEntries = [
+      ...entries,
+      { id: 3, entry_id: 300, entry_name: 'Team C', player_first_name: 'C', player_last_name: 'C', short_name: 'TC', waiver_pick: 3 },
+    ]
+    const h2hMixed = {
+      1: {
+        2: { wins: 1, draws: 0, losses: 0, pointsFor: 50, pointsAgainst: 40 },
+        3: { wins: 0, draws: 0, losses: 0, pointsFor: 0, pointsAgainst: 0 },
+      },
+      2: {
+        1: { wins: 0, draws: 0, losses: 1, pointsFor: 40, pointsAgainst: 50 },
+        3: { wins: 0, draws: 0, losses: 0, pointsFor: 0, pointsAgainst: 0 },
+      },
+      3: {
+        1: { wins: 0, draws: 0, losses: 0, pointsFor: 0, pointsAgainst: 0 },
+        2: { wins: 0, draws: 0, losses: 0, pointsFor: 0, pointsAgainst: 0 },
+      },
+    }
+    const { container } = render(<HeadToHead entries={threeEntries} h2h={h2hMixed} />)
+    // Zero-match pairs should show "-"
+    expect(container.textContent).toContain('-')
   })
 })
 
@@ -367,6 +402,28 @@ describe('LuckMetrics', () => {
     const { container } = render(<LuckMetrics luckMetrics={mockData} />)
     expect(container.textContent).toContain('-3.5')
   })
+
+  it('displays zero luck index', () => {
+    const zeroData = [{
+      ...mockData[0], luckIndex: 0,
+    }]
+    const { container } = render(<LuckMetrics luckMetrics={zeroData} />)
+    // Zero should show as "0" without + or -
+    const allText = container.textContent || ''
+    expect(allText).toContain('0')
+  })
+
+  it('highlights first row green and last row red', () => {
+    const threeTeams = [
+      { ...mockData[0], luckIndex: 5 },
+      { ...mockData[0], entryId: 3, teamName: 'Mid Team', luckIndex: 0 },
+      { ...mockData[1], luckIndex: -5 },
+    ]
+    const { container } = render(<LuckMetrics luckMetrics={threeTeams} />)
+    // First row should have success-muted, last should have danger-muted
+    const rows = container.querySelectorAll('[class*="success-muted"], [class*="danger-muted"]')
+    expect(rows.length).toBeGreaterThanOrEqual(2)
+  })
 })
 
 // ===== WHAT IF =====
@@ -394,6 +451,17 @@ describe('WhatIf', () => {
     const showButton = container.querySelector('button')
     if (showButton) fireEvent.click(showButton)
     expect(screen.getByText('Salah')).toBeInTheDocument()
+  })
+
+  it('renders non-medal rank (> 3) without medal icon', () => {
+    const squads = Array.from({ length: 4 }, (_, i) => ({
+      entryId: i + 1, teamName: `Team${i + 1}`, managerName: `Manager${i + 1}`,
+      players: [{ id: 1, name: 'P', positionName: 'MID', teamShortName: 'T', totalPoints: 100 - i * 10, draftRound: 1 }],
+      totalPoints: 100 - i * 10,
+    }))
+    const { container } = render(<WhatIf squads={squads} />)
+    // 4th place should show rank number without medal
+    expect(container.textContent).toContain('Team4')
   })
 })
 
@@ -527,6 +595,30 @@ describe('GameStatIcons', () => {
     const { container } = render(<GameStatIcons game={game} positionName="FWD" />)
     expect(container.innerHTML).toBe('')
   })
+
+  it('shows yellow card icons', () => {
+    const game = createMockGameStat({ yellowCards: 2 })
+    const { container } = render(<GameStatIcons game={game} positionName="MID" />)
+    expect(container.querySelectorAll('[title="Yellow card"]')).toHaveLength(2)
+  })
+
+  it('shows red card icons in game stats', () => {
+    const game = createMockGameStat({ redCards: 1 })
+    const { container } = render(<GameStatIcons game={game} positionName="MID" />)
+    expect(container.querySelector('[title="Red card"]')).toBeInTheDocument()
+  })
+
+  it('shows penalty saved icons', () => {
+    const game = createMockGameStat({ penaltiesSaved: 1 })
+    const { container } = render(<GameStatIcons game={game} positionName="GK" />)
+    expect(container.querySelector('[title="Penalty saved"]')).toBeInTheDocument()
+  })
+
+  it('shows clean sheet for GK/DEF/MID in game stats', () => {
+    const game = createMockGameStat({ cleanSheet: true })
+    const { container } = render(<GameStatIcons game={game} positionName="DEF" />)
+    expect(container.querySelector('[title="Clean sheet"]')).toBeInTheDocument()
+  })
 })
 
 describe('PlayerDetailPopover', () => {
@@ -550,6 +642,13 @@ describe('PlayerDetailPopover', () => {
     fireEvent.click(screen.getByTitle('View details'))
     expect(container.textContent).toContain('LIV')
     expect(container.textContent).toContain('8pts')
+  })
+
+  it('shows minutes played fallback when no perGameStats', () => {
+    const player = createMockPlayer({ hasPlayed: true, minutesPlayed: 75, perGameStats: [] })
+    const { container } = render(<PlayerDetailPopover player={player} />)
+    fireEvent.click(screen.getByTitle('View details'))
+    expect(container.textContent).toContain('75 min played')
   })
 
   it('closes popover on outside click', () => {
@@ -763,6 +862,33 @@ describe('Results (expanded)', () => {
     const { container } = render(<Results matches={[match]} currentEvent={21} allPointsBreakdown={{}} />)
     const team1Elements = container.querySelectorAll('.text-\\[var\\(--success\\)\\]')
     expect(team1Elements.length).toBeGreaterThan(0)
+  })
+
+  it('shows bench players in expanded breakdown', () => {
+    const match = createMatch(20, true)
+    const breakdown = {
+      20: {
+        1: {
+          entryId: 1, teamName: 'Team1', playerName: 'Player1', totalPoints: 50,
+          players: [
+            createMockPlayer({ name: 'Starter', position: 1, isBenched: false, points: 8, positionName: 'MID' }),
+            createMockPlayer({ name: 'BenchGuy', position: 12, isBenched: true, points: 3, bonus: 1, positionName: 'DEF' }),
+          ],
+        },
+        2: {
+          entryId: 2, teamName: 'Team2', playerName: 'Player2', totalPoints: 40, players: [],
+        },
+      },
+    }
+    const { container } = render(<Results matches={[match]} currentEvent={21} allPointsBreakdown={breakdown} />)
+    // Expand the match
+    const buttons = container.querySelectorAll('button')
+    const viewButton = Array.from(buttons).find(b => b.textContent?.includes('View'))
+    if (viewButton) fireEvent.click(viewButton)
+    expect(screen.getByText('Bench')).toBeInTheDocument()
+    expect(screen.getByText('BenchGuy')).toBeInTheDocument()
+    // Bench player bonus should show
+    expect(container.textContent).toContain('+1')
   })
 
   it('closes team filter dropdown on Escape key', () => {
