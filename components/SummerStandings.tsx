@@ -130,9 +130,9 @@ function EmptyState() {
 
 export function SummerStandings({ standings }: SummerStandingsProps) {
   const sorted = [...standings].sort((a, b) => {
-    // Sort by total points first, then by points difference
+    // Sort by league points first, then by total points scored (PF)
     if (b.total !== a.total) return b.total - a.total
-    return b.pointsFor - b.pointsAgainst - (a.pointsFor - a.pointsAgainst)
+    return b.pointsFor - a.pointsFor
   })
 
   // Check if championship has started (any matches played)
@@ -187,7 +187,7 @@ export function SummerStandings({ standings }: SummerStandingsProps) {
                   <th className="text-center px-2 py-3 font-medium">W</th>
                   <th className="text-center px-2 py-3 font-medium">D</th>
                   <th className="text-center px-2 py-3 font-medium">L</th>
-                  <th className="text-right px-2 py-3 font-medium">PF</th>
+                  <th className="text-right px-2 py-3 font-medium" title="Tiebreaker">PF*</th>
                   <th className="text-right px-2 py-3 font-medium">PA</th>
                   <th className="text-right px-2 py-3 font-medium">+/-</th>
                   <th className="text-right px-4 py-3 font-medium">Pts</th>
@@ -252,7 +252,7 @@ export function SummerStandings({ standings }: SummerStandingsProps) {
       {/* Legend - always visible */}
       <footer className="px-4 py-2 border-t border-[var(--card-border)] bg-[var(--card-elevated)] mt-auto">
         <div className="flex items-center gap-4 text-[10px] text-[var(--muted)]">
-          <span>PF = Points For</span>
+          <span>PF* = Points For (tiebreaker)</span>
           <span>PA = Points Against</span>
           <span>+/- = Points Difference</span>
           <span>Pts = League Points</span>
