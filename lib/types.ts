@@ -185,6 +185,7 @@ export interface FixtureWithNames {
 export interface TransactionWithDetails {
   id: number
   event: number
+  entryId: number
   managerName: string
   playerIn: string
   playerInTeam: string

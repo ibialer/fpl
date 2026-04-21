@@ -1,69 +1,13 @@
+import Link from 'next/link'
 import { ManagerWithSquad } from '@/lib/types'
 import { FormResult } from '@/lib/api'
+import { TEAM_LINK_CLASS } from '@/lib/styles'
+import { RankBadge } from './RankBadge'
+import { FormIndicator } from './FormIndicator'
 
 interface StandingsProps {
   managers: ManagerWithSquad[]
   form: Record<number, FormResult[]>
-}
-
-// Form indicator with improved visual design
-function FormIndicator({ results }: { results: FormResult[] }) {
-  if (results.length === 0) {
-    return <span className="text-xs text-[var(--muted)]">-</span>
-  }
-
-  return (
-    <div className="flex items-center gap-1" role="list" aria-label="Recent form">
-      {results.map((r, i) => {
-        const dotClass = {
-          W: 'form-dot form-dot-win',
-          D: 'form-dot form-dot-draw',
-          L: 'form-dot form-dot-loss',
-        }[r]
-
-        const label = {
-          W: 'Win',
-          D: 'Draw',
-          L: 'Loss',
-        }[r]
-
-        return (
-          <span
-            key={i}
-            className={dotClass}
-            role="listitem"
-            aria-label={label}
-            title={label}
-          />
-        )
-      })}
-    </div>
-  )
-}
-
-// Rank badge with medal styling for top 3
-function RankBadge({ rank }: { rank: number }) {
-  if (rank <= 3) {
-    const medalColors = {
-      1: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30',
-      2: 'bg-slate-400/20 text-slate-300 border-slate-400/30',
-      3: 'bg-amber-700/20 text-amber-600 border-amber-700/30',
-    }[rank]
-
-    return (
-      <span
-        className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold border ${medalColors}`}
-      >
-        {rank}
-      </span>
-    )
-  }
-
-  return (
-    <span className="inline-flex items-center justify-center w-6 h-6 text-sm font-medium text-[var(--muted)]">
-      {rank}
-    </span>
-  )
 }
 
 // Mobile card view for standings
@@ -88,10 +32,15 @@ function MobileStandingCard({
         <RankBadge rank={rank} />
 
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-sm truncate">{manager.entry.entry_name}</div>
-          <div className="text-xs text-[var(--muted)] truncate">
-            {manager.entry.player_first_name} {manager.entry.player_last_name}
-          </div>
+          <Link
+            href={`/team/${manager.entry.id}`}
+            className={`block ${TEAM_LINK_CLASS}`}
+          >
+            <div className="font-medium text-sm truncate">{manager.entry.entry_name}</div>
+            <div className="text-xs text-[var(--muted)] truncate">
+              {manager.entry.player_first_name} {manager.entry.player_last_name}
+            </div>
+          </Link>
         </div>
 
         <div className="text-right">
@@ -171,10 +120,15 @@ export function Standings({ managers, form }: StandingsProps) {
                   <RankBadge rank={m.standing.rank} />
                 </td>
                 <td className="px-4 py-3">
-                  <div className="font-medium">{m.entry.entry_name}</div>
-                  <div className="text-xs text-[var(--muted)]">
-                    {m.entry.player_first_name} {m.entry.player_last_name}
-                  </div>
+                  <Link
+                    href={`/team/${m.entry.id}`}
+                    className={`block ${TEAM_LINK_CLASS}`}
+                  >
+                    <div className="font-medium">{m.entry.entry_name}</div>
+                    <div className="text-xs text-[var(--muted)]">
+                      {m.entry.player_first_name} {m.entry.player_last_name}
+                    </div>
+                  </Link>
                 </td>
                 <td className="text-center px-3 py-3">
                   <FormIndicator results={form[m.entry.id] || []} />

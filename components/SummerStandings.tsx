@@ -1,4 +1,6 @@
+import Link from 'next/link'
 import { LeagueEntry } from '@/lib/types'
+import { TEAM_LINK_CLASS } from '@/lib/styles'
 
 interface SummerStanding {
   entry: LeagueEntry
@@ -62,10 +64,15 @@ function MobileSummerCard({
         <SummerRankBadge rank={rank} />
 
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-sm truncate">{standing.entry.entry_name}</div>
-          <div className="text-xs text-[var(--muted)] truncate">
-            {standing.entry.player_first_name} {standing.entry.player_last_name}
-          </div>
+          <Link
+            href={`/team/${standing.entry.id}`}
+            className={`block ${TEAM_LINK_CLASS}`}
+          >
+            <div className="font-medium text-sm truncate">{standing.entry.entry_name}</div>
+            <div className="text-xs text-[var(--muted)] truncate">
+              {standing.entry.player_first_name} {standing.entry.player_last_name}
+            </div>
+          </Link>
         </div>
 
         <div className="text-right">
@@ -208,10 +215,15 @@ export function SummerStandings({ standings }: SummerStandingsProps) {
                         <SummerRankBadge rank={i + 1} />
                       </td>
                       <td className="px-4 py-3">
-                        <div className="font-medium">{s.entry.entry_name}</div>
-                        <div className="text-xs text-[var(--muted)]">
-                          {s.entry.player_first_name} {s.entry.player_last_name}
-                        </div>
+                        <Link
+                          href={`/team/${s.entry.id}`}
+                          className={`block ${TEAM_LINK_CLASS}`}
+                        >
+                          <div className="font-medium">{s.entry.entry_name}</div>
+                          <div className="text-xs text-[var(--muted)]">
+                            {s.entry.player_first_name} {s.entry.player_last_name}
+                          </div>
+                        </Link>
                       </td>
                       <td className="text-center px-2 py-3 text-[var(--success)] font-medium">
                         {s.wins}

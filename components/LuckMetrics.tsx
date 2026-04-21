@@ -1,4 +1,6 @@
+import Link from 'next/link'
 import { LuckMetricsData } from '@/lib/api'
+import { TEAM_LINK_CLASS } from '@/lib/styles'
 
 interface LuckMetricsProps {
   luckMetrics: LuckMetricsData[]
@@ -32,10 +34,10 @@ function MobileLuckCard({ data }: { data: LuckMetricsData }) {
   return (
     <div className="p-3 border-b border-[var(--card-border)] last:border-b-0">
       <div className="flex items-center justify-between mb-2">
-        <div>
+        <Link href={`/team/${data.entryId}`} className={`block ${TEAM_LINK_CLASS}`}>
           <div className="font-medium text-sm">{data.teamName}</div>
           <div className="text-xs text-[var(--muted)]">{data.managerName}</div>
-        </div>
+        </Link>
         <div className="text-right">
           <div className="text-[10px] text-[var(--muted)] uppercase">Luck</div>
           <LuckIndexBadge value={data.luckIndex} />
@@ -129,8 +131,10 @@ export function LuckMetrics({ luckMetrics }: LuckMetricsProps) {
                 className={`border-b border-[var(--card-border)] last:border-b-0 row-hover ${rowHighlightClass(i, sorted.length)}`}
               >
                 <td className="px-4 py-3">
-                  <div className="font-medium">{data.teamName}</div>
-                  <div className="text-xs text-[var(--muted)]">{data.managerName}</div>
+                  <Link href={`/team/${data.entryId}`} className={`block ${TEAM_LINK_CLASS}`}>
+                    <div className="font-medium">{data.teamName}</div>
+                    <div className="text-xs text-[var(--muted)]">{data.managerName}</div>
+                  </Link>
                 </td>
                 <td className="text-center px-3 py-3 tabular-nums">{data.narrowWins}</td>
                 <td className="text-center px-3 py-3 tabular-nums">{data.opponentAvgPoints}</td>

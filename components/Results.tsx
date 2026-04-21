@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useMemo, useRef, useEffect } from 'react'
+import Link from 'next/link'
 import { FixtureWithNames, TeamPointsBreakdown } from '@/lib/types'
 import { PositionBadge, StatIcons, PlayerDetailPopover } from './PlayerStats'
 
@@ -413,25 +414,45 @@ export function Results({ matches, currentEvent, allPointsBreakdown }: ResultsPr
                 const team1Won = m.team1Points > m.team2Points
                 const team2Won = m.team2Points > m.team1Points
 
+                const handleToggle = () => setExpandedMatch(isExpanded ? null : matchKey)
+                const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+                  if (!hasBreakdown) return
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    handleToggle()
+                  }
+                }
+
                 return (
                   <div key={i}>
-                    <button
-                      onClick={() => setExpandedMatch(isExpanded ? null : matchKey)}
-                      className="w-full px-4 py-3 hover:bg-[var(--card-border)]/20 transition-colors touch-target"
-                      disabled={!hasBreakdown}
+                    <div
+                      onClick={hasBreakdown ? handleToggle : undefined}
+                      onKeyDown={handleKeyDown}
+                      role={hasBreakdown ? 'button' : undefined}
+                      tabIndex={hasBreakdown ? 0 : undefined}
+                      aria-expanded={hasBreakdown ? isExpanded : undefined}
+                      className={`w-full px-4 py-3 transition-colors touch-target ${
+                        hasBreakdown ? 'hover:bg-[var(--card-border)]/20 cursor-pointer' : 'cursor-default'
+                      }`}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex-1 text-right min-w-0">
-                          <div
-                            className={`font-medium text-sm truncate ${
-                              team1Won ? 'text-[var(--success)]' : ''
-                            }`}
+                          <Link
+                            href={`/team/${m.team1Id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-block max-w-full hover:text-[var(--accent)] focus:outline-none focus-visible:text-[var(--accent)]"
                           >
-                            {m.team1Name}
-                          </div>
-                          <div className="text-xs text-[var(--muted)] truncate">
-                            {m.team1PlayerName}
-                          </div>
+                            <div
+                              className={`font-medium text-sm truncate ${
+                                team1Won ? 'text-[var(--success)]' : ''
+                              }`}
+                            >
+                              {m.team1Name}
+                            </div>
+                            <div className="text-xs text-[var(--muted)] truncate">
+                              {m.team1PlayerName}
+                            </div>
+                          </Link>
                         </div>
                         <div className="flex items-center gap-2 px-3">
                           <span
@@ -451,16 +472,22 @@ export function Results({ matches, currentEvent, allPointsBreakdown }: ResultsPr
                           </span>
                         </div>
                         <div className="flex-1 text-left min-w-0">
-                          <div
-                            className={`font-medium text-sm truncate ${
-                              team2Won ? 'text-[var(--success)]' : ''
-                            }`}
+                          <Link
+                            href={`/team/${m.team2Id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-block max-w-full hover:text-[var(--accent)] focus:outline-none focus-visible:text-[var(--accent)]"
                           >
-                            {m.team2Name}
-                          </div>
-                          <div className="text-xs text-[var(--muted)] truncate">
-                            {m.team2PlayerName}
-                          </div>
+                            <div
+                              className={`font-medium text-sm truncate ${
+                                team2Won ? 'text-[var(--success)]' : ''
+                              }`}
+                            >
+                              {m.team2Name}
+                            </div>
+                            <div className="text-xs text-[var(--muted)] truncate">
+                              {m.team2PlayerName}
+                            </div>
+                          </Link>
                         </div>
                       </div>
                       {hasBreakdown && (
@@ -498,7 +525,7 @@ export function Results({ matches, currentEvent, allPointsBreakdown }: ResultsPr
                           </div>
                         </div>
                       )}
-                    </button>
+                    </div>
 
                     {isExpanded && hasBreakdown && (
                       <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-fade-in">

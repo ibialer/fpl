@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { WhatIfSquad } from '@/lib/types'
 
 interface WhatIfProps {
@@ -65,24 +66,38 @@ function SquadCard({
 }) {
   const isTop3 = rank <= 3
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onToggle()
+    }
+  }
+
   return (
     <div
       className={`border-b border-[var(--card-border)] last:border-b-0 ${
         isTop3 ? 'bg-gradient-to-r from-[var(--warning-muted)] to-transparent' : ''
       }`}
     >
-      <button
+      <div
         onClick={onToggle}
-        className="w-full px-4 py-4 hover:bg-[var(--card-border)]/20 transition-colors touch-target"
+        onKeyDown={handleKeyDown}
+        role="button"
+        tabIndex={0}
         aria-expanded={isExpanded}
+        className="w-full px-4 py-4 hover:bg-[var(--card-border)]/20 transition-colors touch-target cursor-pointer"
       >
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 min-w-0">
             <RankBadge rank={rank} />
-            <div className="text-left min-w-0">
+            <Link
+              href={`/team/${squad.entryId}`}
+              onClick={(e) => e.stopPropagation()}
+              className="text-left min-w-0 hover:text-[var(--accent)] focus:outline-none focus-visible:text-[var(--accent)]"
+            >
               <div className="font-semibold truncate">{squad.teamName}</div>
               <div className="text-xs text-[var(--muted)] truncate">{squad.managerName}</div>
-            </div>
+            </Link>
           </div>
 
           <div className="text-right shrink-0">
@@ -109,7 +124,7 @@ function SquadCard({
             {isExpanded ? 'Hide' : 'Show'} squad
           </span>
         </div>
-      </button>
+      </div>
 
       {isExpanded && (
         <div className="px-4 pb-4 animate-fade-in">

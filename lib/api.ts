@@ -1,5 +1,6 @@
 import {
   LeagueDetails,
+  LeagueEntry,
   ElementStatusResponse,
   BootstrapStatic,
   TransactionsResponse,
@@ -177,8 +178,10 @@ export function processTransactions(
   bootstrapStatic: BootstrapStatic,
   currentEvent: number
 ): TransactionWithDetails[] {
+  const entryIdToLeagueId = new Map<number, number>()
   const entryMap = new Map<number, string>()
   leagueDetails.league_entries.forEach((e) => {
+    entryIdToLeagueId.set(e.entry_id, e.id)
     entryMap.set(e.entry_id, `${e.player_first_name} ${e.player_last_name}`)
   })
 
@@ -213,6 +216,7 @@ export function processTransactions(
   return [...waivers, ...freeTransfers].map((t) => ({
     id: t.id,
     event: t.event,
+    entryId: entryIdToLeagueId.get(t.entry) ?? t.entry,
     managerName: entryMap.get(t.entry) || 'Unknown',
     playerIn: playersMap.get(t.element_in)?.name || 'Unknown',
     playerInTeam: playersMap.get(t.element_in)?.team || '',
@@ -221,6 +225,51 @@ export function processTransactions(
     type: t.kind === 'w' ? 'waiver' : 'free',
     date: new Date(t.added).toLocaleDateString(),
   }))
+}
+
+// Get all accepted transactions across the season for a single league entry
+export function getEntryTransactions(
+  transactions: TransactionsResponse,
+  leagueDetails: LeagueDetails,
+  bootstrapStatic: BootstrapStatic,
+  entryId: number
+): TransactionWithDetails[] {
+  const entry = leagueDetails.league_entries.find((e) => e.id === entryId)
+  if (!entry) return []
+
+  const entryIdToLeagueId = new Map<number, number>()
+  const entryMap = new Map<number, string>()
+  leagueDetails.league_entries.forEach((e) => {
+    entryIdToLeagueId.set(e.entry_id, e.id)
+    entryMap.set(e.entry_id, `${e.player_first_name} ${e.player_last_name}`)
+  })
+
+  const teamsMap = new Map<number, string>()
+  bootstrapStatic.teams.forEach((t) => teamsMap.set(t.id, t.short_name))
+
+  const playersMap = new Map<number, { name: string; team: string }>()
+  bootstrapStatic.elements.forEach((p) => {
+    playersMap.set(p.id, {
+      name: p.web_name,
+      team: teamsMap.get(p.team) || '',
+    })
+  })
+
+  return transactions.transactions
+    .filter((t) => t.result === 'a' && t.entry === entry.entry_id)
+    .sort((a, b) => new Date(b.added).getTime() - new Date(a.added).getTime())
+    .map((t) => ({
+      id: t.id,
+      event: t.event,
+      entryId: entryIdToLeagueId.get(t.entry) ?? t.entry,
+      managerName: entryMap.get(t.entry) || 'Unknown',
+      playerIn: playersMap.get(t.element_in)?.name || 'Unknown',
+      playerInTeam: playersMap.get(t.element_in)?.team || '',
+      playerOut: playersMap.get(t.element_out)?.name || 'Unknown',
+      playerOutTeam: playersMap.get(t.element_out)?.team || '',
+      type: t.kind === 'w' ? 'waiver' : 'free',
+      date: new Date(t.added).toLocaleDateString(),
+    }))
 }
 
 export function getCurrentEvent(bootstrapStatic: BootstrapStatic): number {
@@ -661,12 +710,13 @@ export function processWhatIfSquads(
   const teamShortNameMap = new Map<number, string>()
   bootstrapStatic.teams.forEach((t) => teamShortNameMap.set(t.id, t.short_name))
 
-  // Build entry info map
-  const entryMap = new Map<number, { teamName: string; managerName: string }>()
+  // Build entry info map keyed by FPL entry_id
+  const entryMap = new Map<number, { teamName: string; managerName: string; leagueEntryId: number }>()
   leagueDetails.league_entries.forEach((e) => {
     entryMap.set(e.entry_id, {
       teamName: e.entry_name,
       managerName: `${e.player_first_name} ${e.player_last_name}`,
+      leagueEntryId: e.id,
     })
   })
 
@@ -705,7 +755,7 @@ export function processWhatIfSquads(
     const totalPoints = players.reduce((sum, p) => sum + p.totalPoints, 0)
 
     squads.push({
-      entryId,
+      entryId: entryInfo.leagueEntryId,
       teamName: entryInfo.teamName,
       managerName: entryInfo.managerName,
       players,
@@ -886,5 +936,271 @@ export function calculateLuckMetrics(
       draws: stats.draws,
       luckIndex: Math.round(luckIndex * 10) / 10,
     }
+  })
+}
+
+// Manager profile helpers
+
+export interface SeasonTrajectoryPoint {
+  event: number
+  gwPoints: number
+  cumPoints: number
+  gwRank: number
+  cumRank: number
+}
+
+// Compute this entry's per-GW points plus cumulative totals and rank at each GW
+export function calculateSeasonTrajectory(
+  leagueDetails: LeagueDetails,
+  entryId: number
+): SeasonTrajectoryPoint[] {
+  const finishedEvents = new Set<number>()
+  leagueDetails.matches.forEach((m) => {
+    if (m.finished) finishedEvents.add(m.event)
+  })
+  const events = Array.from(finishedEvents).sort((a, b) => a - b)
+
+  const cumByEntry = new Map<number, number>()
+  leagueDetails.league_entries.forEach((e) => cumByEntry.set(e.id, 0))
+
+  const result: SeasonTrajectoryPoint[] = []
+
+  events.forEach((event) => {
+    const matches = leagueDetails.matches.filter((m) => m.event === event && m.finished)
+    const gwPointsByEntry = new Map<number, number>()
+
+    matches.forEach((m) => {
+      gwPointsByEntry.set(m.league_entry_1, m.league_entry_1_points)
+      gwPointsByEntry.set(m.league_entry_2, m.league_entry_2_points)
+      cumByEntry.set(
+        m.league_entry_1,
+        (cumByEntry.get(m.league_entry_1) || 0) + m.league_entry_1_points
+      )
+      cumByEntry.set(
+        m.league_entry_2,
+        (cumByEntry.get(m.league_entry_2) || 0) + m.league_entry_2_points
+      )
+    })
+
+    const gwSorted = [...gwPointsByEntry.entries()].sort((a, b) => b[1] - a[1])
+    const gwRankMap = new Map<number, number>()
+    gwSorted.forEach(([id], i) => gwRankMap.set(id, i + 1))
+
+    const cumSorted = [...cumByEntry.entries()].sort((a, b) => b[1] - a[1])
+    const cumRankMap = new Map<number, number>()
+    cumSorted.forEach(([id], i) => cumRankMap.set(id, i + 1))
+
+    if (gwPointsByEntry.has(entryId)) {
+      result.push({
+        event,
+        gwPoints: gwPointsByEntry.get(entryId) || 0,
+        cumPoints: cumByEntry.get(entryId) || 0,
+        gwRank: gwRankMap.get(entryId) || 0,
+        cumRank: cumRankMap.get(entryId) || 0,
+      })
+    }
+  })
+
+  return result
+}
+
+// League average cumulative points at each finished GW (for the chart baseline)
+export function calculateLeagueAverageTrajectory(
+  leagueDetails: LeagueDetails
+): Array<{ event: number; avgCumPoints: number }> {
+  const finishedEvents = new Set<number>()
+  leagueDetails.matches.forEach((m) => {
+    if (m.finished) finishedEvents.add(m.event)
+  })
+  const events = Array.from(finishedEvents).sort((a, b) => a - b)
+
+  const cumByEntry = new Map<number, number>()
+  leagueDetails.league_entries.forEach((e) => cumByEntry.set(e.id, 0))
+
+  return events.map((event) => {
+    const matches = leagueDetails.matches.filter((m) => m.event === event && m.finished)
+    matches.forEach((m) => {
+      cumByEntry.set(
+        m.league_entry_1,
+        (cumByEntry.get(m.league_entry_1) || 0) + m.league_entry_1_points
+      )
+      cumByEntry.set(
+        m.league_entry_2,
+        (cumByEntry.get(m.league_entry_2) || 0) + m.league_entry_2_points
+      )
+    })
+    const values = Array.from(cumByEntry.values())
+    const avg = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0
+    return { event, avgCumPoints: Math.round(avg * 10) / 10 }
+  })
+}
+
+// Total points left on this entry's bench across all finished GWs with breakdown data
+export function calculateBenchPoints(
+  allBreakdowns: Map<number, Map<number, TeamPointsBreakdown>>,
+  entryId: number
+): number {
+  let total = 0
+  allBreakdowns.forEach((gwMap) => {
+    const breakdown = gwMap.get(entryId)
+    if (!breakdown) return
+    breakdown.players.forEach((p) => {
+      if (p.isBenched) total += p.points
+    })
+  })
+  return total
+}
+
+export interface GWExtremes {
+  bestGW: number
+  bestPoints: number
+  worstGW: number
+  worstPoints: number
+  avgPoints: number
+  matchesPlayed: number
+}
+
+// Best/worst/average GW for a single entry across all finished matches
+export function calculateGWExtremes(
+  leagueDetails: LeagueDetails,
+  entryId: number
+): GWExtremes {
+  const finished = leagueDetails.matches.filter((m) => m.finished)
+  const entryGWs: Array<{ event: number; points: number }> = []
+
+  finished.forEach((m) => {
+    if (m.league_entry_1 === entryId) {
+      entryGWs.push({ event: m.event, points: m.league_entry_1_points })
+    } else if (m.league_entry_2 === entryId) {
+      entryGWs.push({ event: m.event, points: m.league_entry_2_points })
+    }
+  })
+
+  if (entryGWs.length === 0) {
+    return { bestGW: 0, bestPoints: 0, worstGW: 0, worstPoints: 0, avgPoints: 0, matchesPlayed: 0 }
+  }
+
+  let best = entryGWs[0]
+  let worst = entryGWs[0]
+  let total = 0
+
+  entryGWs.forEach((g) => {
+    total += g.points
+    if (g.points > best.points || (g.points === best.points && g.event < best.event)) best = g
+    if (g.points < worst.points || (g.points === worst.points && g.event < worst.event)) worst = g
+  })
+
+  return {
+    bestGW: best.event,
+    bestPoints: best.points,
+    worstGW: worst.event,
+    worstPoints: worst.points,
+    avgPoints: Math.round((total / entryGWs.length) * 10) / 10,
+    matchesPlayed: entryGWs.length,
+  }
+}
+
+export interface DraftRecapEntry {
+  round: number
+  pick: number
+  playerName: string
+  team: string
+  position: string
+  totalPoints: number
+  deltaFromRoundAvg: number
+}
+
+// Per-round draft picks for an entry, plus delta vs league round average
+export function calculateDraftRecap(
+  draftChoices: DraftChoice[],
+  bootstrapStatic: BootstrapStatic,
+  entryId: number,
+  leagueDetails?: LeagueDetails
+): DraftRecapEntry[] {
+  // The DraftChoice.entry field is the FPL entry_id (not the league_entry id).
+  // If leagueDetails is provided, resolve; otherwise assume entryId is the entry_id.
+  let fplEntryId = entryId
+  if (leagueDetails) {
+    const match = leagueDetails.league_entries.find((e) => e.id === entryId)
+    if (match) fplEntryId = match.entry_id
+  }
+
+  const playerMap = new Map<number, Player>()
+  bootstrapStatic.elements.forEach((p) => playerMap.set(p.id, p))
+
+  const teamShortMap = new Map<number, string>()
+  bootstrapStatic.teams.forEach((t) => teamShortMap.set(t.id, t.short_name))
+
+  // Compute round averages across the whole league
+  const roundTotals = new Map<number, { sum: number; count: number }>()
+  draftChoices.forEach((choice) => {
+    const player = playerMap.get(choice.element)
+    const pts = player?.total_points || 0
+    const existing = roundTotals.get(choice.round) || { sum: 0, count: 0 }
+    existing.sum += pts
+    existing.count += 1
+    roundTotals.set(choice.round, existing)
+  })
+
+  const roundAvg = new Map<number, number>()
+  roundTotals.forEach((v, k) => {
+    roundAvg.set(k, v.count > 0 ? v.sum / v.count : 0)
+  })
+
+  return draftChoices
+    .filter((c) => c.entry === fplEntryId)
+    .sort((a, b) => a.round - b.round || a.pick - b.pick)
+    .map((c) => {
+      const player = playerMap.get(c.element)
+      const pts = player?.total_points || 0
+      const avg = roundAvg.get(c.round) || 0
+      return {
+        round: c.round,
+        pick: c.pick,
+        playerName: player?.web_name || 'Unknown',
+        team: player ? (teamShortMap.get(player.team) || '???') : '???',
+        position: player ? getPositionName(player.element_type) : 'UNK',
+        totalPoints: pts,
+        deltaFromRoundAvg: Math.round((pts - avg) * 10) / 10,
+      }
+    })
+}
+
+export interface RivalryEntry {
+  opponentId: number
+  opponentName: string
+  opponentShortName: string
+  record: H2HRecord
+}
+
+// H2H row for one entry, sorted by matches played desc then win rate desc
+export function getRivalryData(
+  h2h: Map<number, Map<number, H2HRecord>>,
+  entries: LeagueEntry[],
+  entryId: number
+): RivalryEntry[] {
+  const row = h2h.get(entryId)
+  if (!row) return []
+
+  const results: RivalryEntry[] = []
+  entries.forEach((opp) => {
+    if (opp.id === entryId) return
+    const record = row.get(opp.id)
+    if (!record) return
+    results.push({
+      opponentId: opp.id,
+      opponentName: opp.entry_name,
+      opponentShortName: opp.short_name,
+      record,
+    })
+  })
+
+  return results.sort((a, b) => {
+    const aTotal = a.record.wins + a.record.draws + a.record.losses
+    const bTotal = b.record.wins + b.record.draws + b.record.losses
+    if (aTotal !== bTotal) return bTotal - aTotal
+    const aRate = aTotal > 0 ? (a.record.wins + a.record.draws * 0.5) / aTotal : 0
+    const bRate = bTotal > 0 ? (b.record.wins + b.record.draws * 0.5) / bTotal : 0
+    return bRate - aRate
   })
 }

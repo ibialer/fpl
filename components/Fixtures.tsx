@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
+import Link from 'next/link'
 import { FixtureWithNames, TeamPointsBreakdown } from '@/lib/types'
 import { PositionBadge, StatIcons, PlayerDetailPopover } from './PlayerStats'
 
@@ -73,12 +74,14 @@ function ScoreDisplay({
 
 // Team info component for fixture card
 function TeamInfo({
+  entryId,
   name,
   managerName,
   isWinning,
   isStarted,
   align,
 }: {
+  entryId: number
   name: string
   managerName: string
   isWinning: boolean
@@ -87,14 +90,20 @@ function TeamInfo({
 }) {
   return (
     <div className={`flex-1 min-w-0 ${align === 'right' ? 'text-right' : 'text-left'}`}>
-      <div
-        className={`font-semibold text-sm sm:text-base truncate transition-colors ${
-          isStarted && isWinning ? 'text-[var(--success)]' : ''
-        }`}
+      <Link
+        href={`/team/${entryId}`}
+        onClick={(e) => e.stopPropagation()}
+        className="inline-block max-w-full hover:text-[var(--accent)] focus:outline-none focus-visible:text-[var(--accent)]"
       >
-        {name}
-      </div>
-      <div className="text-xs text-[var(--muted)] truncate">{managerName}</div>
+        <div
+          className={`font-semibold text-sm sm:text-base truncate transition-colors ${
+            isStarted && isWinning ? 'text-[var(--success)]' : ''
+          }`}
+        >
+          {name}
+        </div>
+        <div className="text-xs text-[var(--muted)] truncate">{managerName}</div>
+      </Link>
     </div>
   )
 }
@@ -238,6 +247,14 @@ function FixtureCard({
   const team2Winning = team2Points > team1Points
   const pointsDiff = Math.abs(team1Points - team2Points)
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!hasBreakdown) return
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onToggle()
+    }
+  }
+
   return (
     <div
       className={`transition-colors ${
@@ -245,18 +262,21 @@ function FixtureCard({
       }`}
     >
       {/* Main fixture row */}
-      <button
-        onClick={onToggle}
-        disabled={!hasBreakdown}
+      <div
+        onClick={hasBreakdown ? onToggle : undefined}
+        onKeyDown={handleKeyDown}
+        role={hasBreakdown ? 'button' : undefined}
+        tabIndex={hasBreakdown ? 0 : undefined}
+        aria-expanded={hasBreakdown ? isExpanded : undefined}
+        aria-label={hasBreakdown ? `${fixture.team1Name} vs ${fixture.team2Name}, tap to ${isExpanded ? 'hide' : 'show'} breakdown` : undefined}
         className={`w-full px-4 py-4 transition-all touch-target ${
           hasBreakdown ? 'hover:bg-[var(--card-border)]/20 cursor-pointer' : 'cursor-default'
         }`}
-        aria-expanded={isExpanded}
-        aria-label={`${fixture.team1Name} vs ${fixture.team2Name}, tap to ${isExpanded ? 'hide' : 'show'} breakdown`}
       >
         <div className="flex items-center justify-between gap-2 sm:gap-4">
           {/* Team 1 */}
           <TeamInfo
+            entryId={fixture.team1Id}
             name={fixture.team1Name}
             managerName={fixture.team1PlayerName}
             isWinning={team1Winning}
@@ -290,6 +310,7 @@ function FixtureCard({
 
           {/* Team 2 */}
           <TeamInfo
+            entryId={fixture.team2Id}
             name={fixture.team2Name}
             managerName={fixture.team2PlayerName}
             isWinning={team2Winning}
@@ -341,7 +362,7 @@ function FixtureCard({
             </div>
           </div>
         )}
-      </button>
+      </div>
 
       {/* Expanded breakdown */}
       {isExpanded && hasBreakdown && (

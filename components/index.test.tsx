@@ -194,7 +194,7 @@ describe('Transactions', () => {
 
   it('renders transactions list', () => {
     const transactions = [{
-      id: 1, event: 21, managerName: 'Manager', playerIn: 'Salah', playerInTeam: 'LIV',
+      id: 1, event: 21, entryId: 1, managerName: 'Manager', playerIn: 'Salah', playerInTeam: 'LIV',
       playerOut: 'Bruno', playerOutTeam: 'MUN', type: 'waiver' as const, date: '2024-01-01',
     }]
     render(<Transactions transactions={transactions} currentEvent={21} />)
@@ -341,8 +341,8 @@ describe('Fixtures', () => {
       <Fixtures fixtures={[fixture]} currentEvent={21} pointsBreakdown={breakdownWithPlayers} />
     )
     // Click to expand the fixture
-    const button = container.querySelector('button')
-    if (button) fireEvent.click(button)
+    const toggle = container.querySelector('[role="button"]')
+    if (toggle) fireEvent.click(toggle)
     // Each player with hasPlayed should have an info button
     const infoButtons = screen.getAllByTitle('View details')
     expect(infoButtons.length).toBe(3)
@@ -448,7 +448,7 @@ describe('WhatIf', () => {
 
   it('expands to show players when clicked', () => {
     const { container } = render(<WhatIf squads={[squad]} />)
-    const showButton = container.querySelector('button')
+    const showButton = container.querySelector('[role="button"]')
     if (showButton) fireEvent.click(showButton)
     expect(screen.getByText('Salah')).toBeInTheDocument()
   })
@@ -882,8 +882,8 @@ describe('Results (expanded)', () => {
     }
     const { container } = render(<Results matches={[match]} currentEvent={21} allPointsBreakdown={breakdown} />)
     // Expand the match
-    const buttons = container.querySelectorAll('button')
-    const viewButton = Array.from(buttons).find(b => b.textContent?.includes('View'))
+    const toggles = container.querySelectorAll('[role="button"]')
+    const viewButton = Array.from(toggles).find((b) => b.textContent?.includes('View'))
     if (viewButton) fireEvent.click(viewButton)
     expect(screen.getByText('Bench')).toBeInTheDocument()
     expect(screen.getByText('BenchGuy')).toBeInTheDocument()

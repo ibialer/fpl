@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useMemo, useRef, useEffect } from 'react'
+import Link from 'next/link'
 import { FixtureWithNames } from '@/lib/types'
+import { TEAM_LINK_CLASS } from '@/lib/styles'
 
 interface UpcomingFixturesProps {
   matches: FixtureWithNames[]
@@ -242,8 +244,10 @@ function UpcomingFixtureCard({ match }: { match: FixtureWithNames }) {
       <div className="flex items-center justify-between gap-3">
         {/* Team 1 */}
         <div className="flex-1 min-w-0 text-right">
-          <div className="font-semibold text-sm truncate">{match.team1Name}</div>
-          <div className="text-xs text-[var(--muted)] truncate">{match.team1PlayerName}</div>
+          <Link href={`/team/${match.team1Id}`} className={`block ${TEAM_LINK_CLASS}`}>
+            <div className="font-semibold text-sm truncate">{match.team1Name}</div>
+            <div className="text-xs text-[var(--muted)] truncate">{match.team1PlayerName}</div>
+          </Link>
         </div>
 
         {/* VS badge */}
@@ -253,8 +257,10 @@ function UpcomingFixtureCard({ match }: { match: FixtureWithNames }) {
 
         {/* Team 2 */}
         <div className="flex-1 min-w-0 text-left">
-          <div className="font-semibold text-sm truncate">{match.team2Name}</div>
-          <div className="text-xs text-[var(--muted)] truncate">{match.team2PlayerName}</div>
+          <Link href={`/team/${match.team2Id}`} className={`block ${TEAM_LINK_CLASS}`}>
+            <div className="font-semibold text-sm truncate">{match.team2Name}</div>
+            <div className="text-xs text-[var(--muted)] truncate">{match.team2PlayerName}</div>
+          </Link>
         </div>
       </div>
     </div>

@@ -23,7 +23,15 @@ import {
   fetchAllData,
   fetchPointsBreakdown,
   fetchAllPointsBreakdown,
+  calculateSeasonTrajectory,
+  calculateLeagueAverageTrajectory,
+  calculateBenchPoints,
+  calculateGWExtremes,
+  calculateDraftRecap,
+  getEntryTransactions,
+  getRivalryData,
 } from './api'
+import type { TeamPointsBreakdown } from './types'
 import {
   LeagueDetails,
   TransactionsResponse,
@@ -1386,5 +1394,180 @@ describe('fetch functions', () => {
       expect(result.get(1)!.size).toBe(0)
       consoleSpy.mockRestore()
     })
+  })
+})
+
+// ============================================================================
+// Manager profile helper tests
+// ============================================================================
+
+function createThreeEntryLeague(): LeagueDetails {
+  return {
+    league: {
+      id: 1, name: 'T', admin_entry: 1, closed: false, draft_dt: '', draft_status: '',
+      scoring: 'h', start_event: 1, stop_event: 38, trades: '', transaction_mode: '', variety: '',
+    },
+    league_entries: [
+      { id: 1, entry_id: 100, entry_name: 'A', player_first_name: 'Al', player_last_name: 'Pha', short_name: 'A', waiver_pick: 1 },
+      { id: 2, entry_id: 200, entry_name: 'B', player_first_name: 'Be', player_last_name: 'Ta', short_name: 'B', waiver_pick: 2 },
+      { id: 3, entry_id: 300, entry_name: 'C', player_first_name: 'Ga', player_last_name: 'Ma', short_name: 'C', waiver_pick: 3 },
+    ],
+    matches: [
+      // GW1: 1 vs 2 (60-40), 3 is idle this GW
+      { event: 1, finished: true, started: true, league_entry_1: 1, league_entry_1_points: 60, league_entry_2: 2, league_entry_2_points: 40, winning_league_entry: 1, winning_method: 'points' },
+      // GW2: 1 vs 3 (30-70)
+      { event: 2, finished: true, started: true, league_entry_1: 1, league_entry_1_points: 30, league_entry_2: 3, league_entry_2_points: 70, winning_league_entry: 3, winning_method: 'points' },
+      // GW3: 1 vs 2 (80-75), 3 idle
+      { event: 3, finished: true, started: true, league_entry_1: 1, league_entry_1_points: 80, league_entry_2: 2, league_entry_2_points: 75, winning_league_entry: 1, winning_method: 'points' },
+      // GW4 unfinished
+      { event: 4, finished: false, started: false, league_entry_1: 1, league_entry_1_points: 0, league_entry_2: 3, league_entry_2_points: 0, winning_league_entry: null, winning_method: null },
+    ],
+    standings: [],
+  }
+}
+
+describe('calculateSeasonTrajectory', () => {
+  it('computes cumulative points and rank across finished GWs', () => {
+    const league = createThreeEntryLeague()
+    const traj = calculateSeasonTrajectory(league, 1)
+
+    expect(traj).toHaveLength(3)
+    expect(traj[0]).toMatchObject({ event: 1, gwPoints: 60, cumPoints: 60 })
+    expect(traj[1]).toMatchObject({ event: 2, gwPoints: 30, cumPoints: 90 })
+    expect(traj[2]).toMatchObject({ event: 3, gwPoints: 80, cumPoints: 170 })
+  })
+
+  it('returns empty array for an entry with no finished matches', () => {
+    const league = createThreeEntryLeague()
+    league.matches = []
+    expect(calculateSeasonTrajectory(league, 1)).toEqual([])
+  })
+})
+
+describe('calculateLeagueAverageTrajectory', () => {
+  it('returns per-GW league-wide average cumulative points', () => {
+    const league = createThreeEntryLeague()
+    const avg = calculateLeagueAverageTrajectory(league)
+    expect(avg).toHaveLength(3)
+    // GW1 cumulative: entry1=60, entry2=40, entry3=0 → avg = 33.3
+    expect(avg[0].event).toBe(1)
+    expect(avg[0].avgCumPoints).toBeCloseTo(33.3, 1)
+    // After GW3: 170, 115, 70 → avg ≈ 118.3
+    expect(avg[2].avgCumPoints).toBeCloseTo(118.3, 1)
+  })
+})
+
+describe('calculateBenchPoints', () => {
+  it('sums bench points across all finished GWs', () => {
+    const allBreakdowns = new Map<number, Map<number, TeamPointsBreakdown>>()
+    const mkBreakdown = (bench: number[]): TeamPointsBreakdown => ({
+      entryId: 1,
+      teamName: 'T',
+      playerName: 'P',
+      totalPoints: 0,
+      players: bench.map((pts, i) => ({
+        name: `p${i}`, points: pts, position: 12 + i, isBenched: true,
+        positionName: 'MID', teamShortName: 'X', opponentShortName: 'Y', isHome: true, opponents: [],
+        goals: 0, assists: 0, cleanSheet: false, bonus: 0, yellowCards: 0, redCards: 0,
+        minutesPlayed: 0, hasPlayed: false, defensiveContribution: 0, perGameStats: [],
+      })),
+    })
+
+    const gw1 = new Map<number, TeamPointsBreakdown>([[1, mkBreakdown([3, 5])]])
+    const gw2 = new Map<number, TeamPointsBreakdown>([[1, mkBreakdown([1, 8, 2])]])
+    allBreakdowns.set(1, gw1)
+    allBreakdowns.set(2, gw2)
+
+    expect(calculateBenchPoints(allBreakdowns, 1)).toBe(3 + 5 + 1 + 8 + 2)
+  })
+
+  it('returns 0 when no breakdowns match entry', () => {
+    const allBreakdowns = new Map<number, Map<number, TeamPointsBreakdown>>()
+    expect(calculateBenchPoints(allBreakdowns, 1)).toBe(0)
+  })
+})
+
+describe('calculateGWExtremes', () => {
+  it('returns best, worst, avg, and matches played', () => {
+    const league = createThreeEntryLeague()
+    const x = calculateGWExtremes(league, 1)
+    expect(x.bestGW).toBe(3)
+    expect(x.bestPoints).toBe(80)
+    expect(x.worstGW).toBe(2)
+    expect(x.worstPoints).toBe(30)
+    expect(x.matchesPlayed).toBe(3)
+    expect(x.avgPoints).toBeCloseTo(56.7, 0)
+  })
+
+  it('returns zeros when no finished matches exist', () => {
+    const league = createThreeEntryLeague()
+    league.matches = []
+    expect(calculateGWExtremes(league, 1)).toEqual({
+      bestGW: 0, bestPoints: 0, worstGW: 0, worstPoints: 0, avgPoints: 0, matchesPlayed: 0,
+    })
+  })
+})
+
+describe('calculateDraftRecap', () => {
+  it('returns per-round picks with delta vs round league average', () => {
+    const bootstrap = createMockBootstrapStatic()
+    // Salah = 100 pts, Haaland = 120 pts
+    const draftChoices: DraftChoice[] = [
+      { id: 1, element: 1, entry: 100, entry_name: 'A', player_first_name: '', player_last_name: '', round: 1, pick: 1, index: 1 },
+      { id: 2, element: 2, entry: 200, entry_name: 'B', player_first_name: '', player_last_name: '', round: 1, pick: 2, index: 2 },
+    ]
+    const league = createMockLeagueDetails()
+
+    const recap = calculateDraftRecap(draftChoices, bootstrap, 1, league)
+    expect(recap).toHaveLength(1)
+    expect(recap[0].round).toBe(1)
+    expect(recap[0].playerName).toBe('Salah')
+    expect(recap[0].totalPoints).toBe(100)
+    // Round 1 average = (100+120)/2 = 110; delta = 100 - 110 = -10
+    expect(recap[0].deltaFromRoundAvg).toBe(-10)
+  })
+})
+
+describe('getEntryTransactions', () => {
+  it('returns accepted transactions for a single entry, newest first', () => {
+    const transactions: TransactionsResponse = {
+      transactions: [
+        { id: 1, added: '2024-01-01T10:00:00Z', element_in: 1, element_out: 2, entry: 100, event: 21, kind: 'w', result: 'a', index: 1, priority: 1 },
+        { id: 2, added: '2024-01-10T10:00:00Z', element_in: 2, element_out: 1, entry: 100, event: 22, kind: 'f', result: 'a', index: null, priority: null },
+        { id: 3, added: '2024-01-05T10:00:00Z', element_in: 1, element_out: 2, entry: 200, event: 21, kind: 'w', result: 'a', index: 1, priority: 1 },
+        { id: 4, added: '2024-01-02T10:00:00Z', element_in: 1, element_out: 2, entry: 100, event: 21, kind: 'w', result: 'di', index: 2, priority: 2 },
+      ],
+    }
+    const league = createMockLeagueDetails()
+    const bootstrap = createMockBootstrapStatic()
+
+    const result = getEntryTransactions(transactions, league, bootstrap, 1)
+    expect(result.map((r) => r.id)).toEqual([2, 1])
+    expect(result[0].entryId).toBe(1)
+  })
+
+  it('returns empty array when entryId is unknown', () => {
+    const transactions: TransactionsResponse = { transactions: [] }
+    const league = createMockLeagueDetails()
+    const bootstrap = createMockBootstrapStatic()
+    expect(getEntryTransactions(transactions, league, bootstrap, 999)).toEqual([])
+  })
+})
+
+describe('getRivalryData', () => {
+  it('sorts by matches desc then win-rate desc', () => {
+    const league = createThreeEntryLeague()
+    const h2h = calculateHeadToHead(league)
+    const rivalries = getRivalryData(h2h, league.league_entries, 1)
+    expect(rivalries.map((r) => r.opponentId)).toEqual([2, 3])
+    const vs2 = rivalries.find((r) => r.opponentId === 2)!
+    expect(vs2.record.wins).toBe(2)
+    expect(vs2.record.losses).toBe(0)
+  })
+
+  it('returns empty array for an unknown entry', () => {
+    const league = createThreeEntryLeague()
+    const h2h = calculateHeadToHead(league)
+    expect(getRivalryData(h2h, league.league_entries, 999)).toEqual([])
   })
 })

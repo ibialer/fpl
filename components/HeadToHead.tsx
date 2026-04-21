@@ -1,5 +1,7 @@
+import Link from 'next/link'
 import { LeagueEntry } from '@/lib/types'
 import { H2HRecord } from '@/lib/api'
+import { TEAM_LINK_CLASS } from '@/lib/styles'
 
 interface HeadToHeadProps {
   entries: LeagueEntry[]
@@ -87,8 +89,10 @@ function MobileH2HView({
           <div key={rowEntry.id} className="p-3">
             {/* Team header */}
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-sm font-semibold">{rowEntry.short_name}</span>
-              <span className="text-xs text-[var(--muted)]">{rowEntry.entry_name}</span>
+              <Link href={`/team/${rowEntry.id}`} className={`flex items-center gap-2 ${TEAM_LINK_CLASS}`}>
+                <span className="text-sm font-semibold">{rowEntry.short_name}</span>
+                <span className="text-xs text-[var(--muted)]">{rowEntry.entry_name}</span>
+              </Link>
             </div>
 
             {/* Records grid */}
@@ -203,12 +207,13 @@ export function HeadToHead({ entries, h2h }: HeadToHeadProps) {
                       key={entry.id}
                       className="text-center px-2 py-3 min-w-[70px] font-medium"
                     >
-                      <div
-                        className="font-semibold truncate max-w-[80px] mx-auto"
+                      <Link
+                        href={`/team/${entry.id}`}
+                        className={`block font-semibold truncate max-w-[80px] mx-auto ${TEAM_LINK_CLASS}`}
                         title={entry.entry_name}
                       >
                         {entry.short_name}
-                      </div>
+                      </Link>
                     </th>
                   ))}
                 </tr>
@@ -217,12 +222,13 @@ export function HeadToHead({ entries, h2h }: HeadToHeadProps) {
                 {sortedEntries.map((rowEntry) => (
                   <tr key={rowEntry.id} className="border-t border-[var(--card-border)]">
                     <td className="px-3 py-2 sticky left-0 bg-[var(--card)] z-10 border-r border-[var(--card-border)]">
-                      <div
-                        className="font-semibold text-xs truncate max-w-[80px]"
+                      <Link
+                        href={`/team/${rowEntry.id}`}
+                        className={`block font-semibold text-xs truncate max-w-[80px] ${TEAM_LINK_CLASS}`}
                         title={rowEntry.entry_name}
                       >
                         {rowEntry.short_name}
-                      </div>
+                      </Link>
                     </td>
                     {sortedEntries.map((colEntry) => (
                       <td key={colEntry.id} className="text-center px-2 py-2">
