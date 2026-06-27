@@ -28,6 +28,7 @@ import { UpcomingFixtures } from './UpcomingFixtures'
 import { WhatIf } from './WhatIf'
 import { Fixtures } from './Fixtures'
 import { LuckMetrics } from './LuckMetrics'
+import { SeasonRecap } from './SeasonRecap'
 
 // ===== HEADER =====
 describe('Header', () => {
@@ -108,6 +109,67 @@ describe('Standings', () => {
     const { container } = render(<Standings managers={[fourthPlace]} form={{}} />)
     // Rank 4 should render as plain text (no medal border)
     expect(container.textContent).toContain('4')
+  })
+})
+
+// ===== SEASON RECAP =====
+describe('SeasonRecap', () => {
+  const entries = [
+    { id: 1, entry_id: 100, entry_name: 'Champs', player_first_name: 'John', player_last_name: 'Doe', short_name: 'JD', waiver_pick: 1 },
+    { id: 2, entry_id: 200, entry_name: 'Runners', player_first_name: 'Jane', player_last_name: 'Smith', short_name: 'JS', waiver_pick: 2 },
+  ]
+
+  const makeStanding = (id: number, rank: number, total: number, pf: number) => ({
+    league_entry: id, rank, last_rank: rank, rank_sort: rank,
+    matches_played: 2, matches_won: rank === 1 ? 2 : 0, matches_drawn: 0, matches_lost: rank === 1 ? 0 : 2,
+    points_for: pf, points_against: 80, total,
+  })
+
+  const managers = [
+    { entry: entries[0], standing: makeStanding(1, 1, 6, 150), squad: [] },
+    { entry: entries[1], standing: makeStanding(2, 2, 0, 90), squad: [] },
+  ]
+
+  const matches = [
+    { event: 1, finished: true, started: true, league_entry_1: 1, league_entry_1_points: 85, league_entry_2: 2, league_entry_2_points: 40, winning_league_entry: 1, winning_method: 'points' },
+  ]
+
+  const luckMetrics = [
+    { entryId: 1, teamName: 'Champs', managerName: 'John Doe', narrowWins: 1, opponentAvgPoints: 40, luckyWins: 1, unluckyLosses: 0, expectedWins: 1, actualWins: 2, draws: 0, luckIndex: 5 },
+    { entryId: 2, teamName: 'Runners', managerName: 'Jane Smith', narrowWins: 0, opponentAvgPoints: 50, luckyWins: 0, unluckyLosses: 2, expectedWins: 1, actualWins: 0, draws: 0, luckIndex: -4 },
+  ]
+
+  const summerStandings = [
+    { entry: entries[0], wins: 3, draws: 0, losses: 0, pointsFor: 300, pointsAgainst: 200, total: 9, rank: 0 },
+    { entry: entries[1], wins: 0, draws: 0, losses: 3, pointsFor: 180, pointsAgainst: 280, total: 0, rank: 0 },
+  ]
+
+  const h2h = {
+    1: { 2: { wins: 2, draws: 0, losses: 0, pointsFor: 150, pointsAgainst: 90 } },
+    2: { 1: { wins: 0, draws: 0, losses: 2, pointsFor: 90, pointsAgainst: 150 } },
+  }
+
+  const props = { managers, matches, entries, luckMetrics, summerStandings, h2h }
+
+  it('crowns the champion and shows the awards section', () => {
+    render(<SeasonRecap {...props} />)
+    expect(screen.getByText('League Champion')).toBeInTheDocument()
+    expect(screen.getByText('Season Awards')).toBeInTheDocument()
+    // Champion name appears in banner and final table
+    expect(screen.getAllByText('Champs').length).toBeGreaterThan(0)
+  })
+
+  it('renders award cards including highest gameweek', () => {
+    render(<SeasonRecap {...props} />)
+    expect(screen.getByText('Highest Gameweek')).toBeInTheDocument()
+    expect(screen.getByText('Gameweek 1')).toBeInTheDocument()
+    expect(screen.getByText('Luckiest Manager')).toBeInTheDocument()
+    expect(screen.getByText('Summer Champion')).toBeInTheDocument()
+  })
+
+  it('shows an empty state when there is no data', () => {
+    render(<SeasonRecap managers={[]} matches={[]} entries={entries} luckMetrics={[]} summerStandings={[]} h2h={{}} />)
+    expect(screen.getByText(/Awards will appear/i)).toBeInTheDocument()
   })
 })
 

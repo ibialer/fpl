@@ -131,6 +131,15 @@ className="sticky top-[105px] sm:top-[85px] z-[calc(var(--z-sticky)+1)] glass bg
 
 // Pre-built icons for common tabs
 export const TabIcons = {
+  recap: (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M8 21h8m-4-4v4m5-16h3a1 1 0 011 1v1a4 4 0 01-4 4m-9-6H4a1 1 0 00-1 1v1a4 4 0 004 4m0-9h10v5a5 5 0 01-10 0V4z"
+      />
+    </svg>
+  ),
   live: (
     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path

@@ -30,7 +30,10 @@ import {
   calculateDraftRecap,
   getEntryTransactions,
   getRivalryData,
+  calculateSeasonAwards,
 } from './api'
+import type { ManagerWithSquad, Match, LeagueEntry } from './types'
+import type { LuckMetricsData, H2HRecord } from './api'
 import type { TeamPointsBreakdown } from './types'
 import {
   LeagueDetails,
@@ -1569,5 +1572,108 @@ describe('getRivalryData', () => {
     const league = createThreeEntryLeague()
     const h2h = calculateHeadToHead(league)
     expect(getRivalryData(h2h, league.league_entries, 999)).toEqual([])
+  })
+})
+
+describe('calculateSeasonAwards', () => {
+  const entries: LeagueEntry[] = [
+    { id: 1, entry_id: 100, entry_name: 'Team A', player_first_name: 'John', player_last_name: 'Doe', short_name: 'JD', waiver_pick: 1 },
+    { id: 2, entry_id: 200, entry_name: 'Team B', player_first_name: 'Jane', player_last_name: 'Smith', short_name: 'JS', waiver_pick: 2 },
+    { id: 3, entry_id: 300, entry_name: 'Team C', player_first_name: 'Sam', player_last_name: 'Lee', short_name: 'SL', waiver_pick: 3 },
+  ]
+
+  const standing = (id: number, rank: number, w: number, d: number, l: number, pf: number, pa: number, total: number) => ({
+    league_entry: id, rank, last_rank: rank, rank_sort: rank,
+    matches_played: w + d + l, matches_won: w, matches_drawn: d, matches_lost: l,
+    points_for: pf, points_against: pa, total,
+  })
+
+  const managers: ManagerWithSquad[] = [
+    { entry: entries[0], standing: standing(1, 1, 2, 0, 0, 150, 80, 6), squad: [] },
+    { entry: entries[1], standing: standing(2, 2, 1, 0, 1, 95, 110, 3), squad: [] },
+    { entry: entries[2], standing: standing(3, 3, 0, 0, 2, 90, 145, 0), squad: [] },
+  ]
+
+  const match = (event: number, e1: number, p1: number, e2: number, p2: number): Match => ({
+    event, finished: true, started: true,
+    league_entry_1: e1, league_entry_1_points: p1,
+    league_entry_2: e2, league_entry_2_points: p2,
+    winning_league_entry: p1 === p2 ? null : p1 > p2 ? e1 : e2,
+    winning_method: p1 === p2 ? null : 'points',
+  })
+
+  const matches: Match[] = [
+    match(1, 1, 80, 2, 40),
+    match(1, 3, 30, 1, 70),
+    match(2, 2, 55, 3, 60),
+  ]
+
+  const luckMetrics: LuckMetricsData[] = [
+    { entryId: 2, teamName: 'Team B', managerName: 'Jane Smith', narrowWins: 3, opponentAvgPoints: 40, luckyWins: 2, unluckyLosses: 0, expectedWins: 1, actualWins: 1, draws: 0, luckIndex: 8 },
+    { entryId: 1, teamName: 'Team A', managerName: 'John Doe', narrowWins: 1, opponentAvgPoints: 45, luckyWins: 0, unluckyLosses: 1, expectedWins: 2, actualWins: 2, draws: 0, luckIndex: 1 },
+    { entryId: 3, teamName: 'Team C', managerName: 'Sam Lee', narrowWins: 0, opponentAvgPoints: 55, luckyWins: 0, unluckyLosses: 3, expectedWins: 1, actualWins: 0, draws: 0, luckIndex: -7 },
+  ]
+
+  const summerStandings = [
+    { entry: entries[1], wins: 4, draws: 1, losses: 0, pointsFor: 300, pointsAgainst: 250, total: 13, rank: 0 },
+    { entry: entries[0], wins: 3, draws: 0, losses: 2, pointsFor: 320, pointsAgainst: 280, total: 9, rank: 0 },
+    { entry: entries[2], wins: 0, draws: 0, losses: 5, pointsFor: 200, pointsAgainst: 290, total: 0, rank: 0 },
+  ]
+
+  // Team A dominates Team C 2-0; everything else closer.
+  const h2h: Record<number, Record<number, H2HRecord>> = {
+    1: { 2: { wins: 1, draws: 0, losses: 1, pointsFor: 150, pointsAgainst: 95 }, 3: { wins: 2, draws: 0, losses: 0, pointsFor: 140, pointsAgainst: 60 } },
+    2: { 1: { wins: 1, draws: 0, losses: 1, pointsFor: 95, pointsAgainst: 150 }, 3: { wins: 1, draws: 0, losses: 1, pointsFor: 105, pointsAgainst: 110 } },
+    3: { 1: { wins: 0, draws: 0, losses: 2, pointsFor: 60, pointsAgainst: 140 }, 2: { wins: 1, draws: 0, losses: 1, pointsFor: 110, pointsAgainst: 105 } },
+  }
+
+  const run = () => calculateSeasonAwards(managers, matches, entries, luckMetrics, summerStandings, h2h)
+
+  it('awards highest gameweek to the single best team-GW score', () => {
+    const a = run().find((x) => x.id === 'highest-gw')!
+    expect(a.entryId).toBe(1)
+    expect(a.stat).toBe('80')
+    expect(a.detail).toBe('Gameweek 1')
+  })
+
+  it('awards highest scorer by total points for', () => {
+    const a = run().find((x) => x.id === 'most-points-for')!
+    expect(a.entryId).toBe(1)
+    expect(a.stat).toBe('150')
+  })
+
+  it('awards luckiest and unluckiest from the luck index extremes', () => {
+    const awards = run()
+    const lucky = awards.find((x) => x.id === 'luckiest')!
+    const unlucky = awards.find((x) => x.id === 'unluckiest')!
+    expect(lucky.entryId).toBe(2)
+    expect(lucky.stat).toBe('+8')
+    expect(unlucky.entryId).toBe(3)
+    expect(unlucky.stat).toBe('-7')
+  })
+
+  it('awards summer champion by league points then PF', () => {
+    const a = run().find((x) => x.id === 'summer-champion')!
+    expect(a.entryId).toBe(2)
+    expect(a.stat).toBe('13')
+  })
+
+  it('awards the most dominant head-to-head record', () => {
+    const a = run().find((x) => x.id === 'dominant-h2h')!
+    expect(a.entryId).toBe(1)
+    expect(a.statLabel).toContain('Team C')
+    expect(a.stat).toBe('2W-0D-0L')
+  })
+
+  it('skips unluckiest when no manager has a negative luck index', () => {
+    const positiveLuck = luckMetrics.map((l) => ({ ...l, luckIndex: Math.abs(l.luckIndex) }))
+    const awards = calculateSeasonAwards(managers, matches, entries, positiveLuck, summerStandings, h2h)
+    expect(awards.find((x) => x.id === 'unluckiest')).toBeUndefined()
+    expect(awards.find((x) => x.id === 'luckiest')).toBeDefined()
+  })
+
+  it('returns no luck or gameweek awards when inputs are empty', () => {
+    const awards = calculateSeasonAwards([], [], entries, [], [], {})
+    expect(awards).toEqual([])
   })
 })
