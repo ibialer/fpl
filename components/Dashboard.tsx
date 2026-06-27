@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { TabNavigation, TabIcons } from './TabNavigation'
+import { SeasonRecap } from './SeasonRecap'
 import { GWSummary } from './GWSummary'
 import { Fixtures } from './Fixtures'
 import { Standings } from './Standings'
@@ -51,6 +52,7 @@ interface DashboardProps {
 }
 
 const TABS = [
+  { id: 'recap', label: 'Recap', icon: TabIcons.recap },
   { id: 'live', label: 'Live', icon: TabIcons.live },
   { id: 'results', label: 'Results', icon: TabIcons.results },
   { id: 'plmatches', label: 'PL', icon: TabIcons.plmatches },
@@ -72,7 +74,7 @@ export function Dashboard({
   transactionsEvent,
   luckMetrics,
 }: DashboardProps) {
-  const [activeTab, setActiveTab] = useState('live')
+  const [activeTab, setActiveTab] = useState('recap')
   const [allPointsBreakdown, setAllPointsBreakdown] = useState<Record<number, Record<number, TeamPointsBreakdown>> | null>(null)
   const [breakdownLoading, setBreakdownLoading] = useState(false)
   const [breakdownError, setBreakdownError] = useState(false)
@@ -138,6 +140,17 @@ export function Dashboard({
           id={`${activeTab}-panel`}
           aria-labelledby={activeTab}
         >
+          {activeTab === 'recap' && (
+            <SeasonRecap
+              managers={managers}
+              matches={matches}
+              entries={entries}
+              luckMetrics={luckMetrics}
+              summerStandings={summerStandings}
+              h2h={h2h}
+            />
+          )}
+
           {activeTab === 'live' && (
             <div className="space-y-6 stagger-children">
               {/* AI-Generated GW Summary */}

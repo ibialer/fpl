@@ -1,6 +1,7 @@
 import {
   LeagueDetails,
   LeagueEntry,
+  Match,
   ElementStatusResponse,
   BootstrapStatic,
   TransactionsResponse,
@@ -1203,4 +1204,204 @@ export function getRivalryData(
     const bRate = bTotal > 0 ? (b.record.wins + b.record.draws * 0.5) / bTotal : 0
     return bRate - aRate
   })
+}
+
+// ============================================================================
+// Season Recap — end-of-season "award" superlatives
+// ============================================================================
+
+export interface SeasonAward {
+  id: string
+  emoji: string
+  title: string
+  description: string
+  entryId: number // league_entry id (used for /team/ links)
+  teamName: string
+  managerName: string
+  stat: string
+  statLabel: string
+  detail?: string
+  tone: 'accent' | 'success' | 'danger' | 'warning'
+}
+
+// Minimal structural shape of a Summer Championship standing row.
+// Kept loose so the inline-typed prop from the dashboard is assignable.
+interface SummerStandingLike {
+  entry: LeagueEntry
+  wins: number
+  draws: number
+  losses: number
+  pointsFor: number
+  total: number
+}
+
+/**
+ * Compute end-of-season superlatives from data already available client-side.
+ * Every award is derived purely from props passed to the dashboard — no fetching.
+ * Returns only the awards it can compute (skips any that lack data).
+ */
+export function calculateSeasonAwards(
+  managers: ManagerWithSquad[],
+  matches: Match[],
+  entries: LeagueEntry[],
+  luckMetrics: LuckMetricsData[],
+  summerStandings: SummerStandingLike[],
+  h2h: Record<number, Record<number, H2HRecord>>
+): SeasonAward[] {
+  const awards: SeasonAward[] = []
+
+  const entryById = new Map(entries.map((e) => [e.id, e]))
+  const nameFor = (id: number) => {
+    const e = entryById.get(id)
+    return {
+      teamName: e?.entry_name ?? 'Unknown',
+      managerName: e ? `${e.player_first_name} ${e.player_last_name}` : '',
+    }
+  }
+  const wdl = (w: number, d: number, l: number) => `${w}W-${d}D-${l}L`
+
+  // 🔥 Highest single gameweek — most points any team scored in one GW.
+  let bestGW = { id: 0, event: 0, points: -1 }
+  matches
+    .filter((m) => m.finished)
+    .forEach((m) => {
+      if (m.league_entry_1_points > bestGW.points) {
+        bestGW = { id: m.league_entry_1, event: m.event, points: m.league_entry_1_points }
+      }
+      if (m.league_entry_2_points > bestGW.points) {
+        bestGW = { id: m.league_entry_2, event: m.event, points: m.league_entry_2_points }
+      }
+    })
+  if (bestGW.points >= 0) {
+    awards.push({
+      id: 'highest-gw',
+      emoji: '🔥',
+      title: 'Highest Gameweek',
+      description: 'Most points scored in a single gameweek',
+      entryId: bestGW.id,
+      ...nameFor(bestGW.id),
+      stat: `${bestGW.points}`,
+      statLabel: 'points',
+      detail: `Gameweek ${bestGW.event}`,
+      tone: 'accent',
+    })
+  }
+
+  // 💪 Most points for — biggest scorer across the whole season.
+  const topScorer = [...managers].sort(
+    (a, b) => b.standing.points_for - a.standing.points_for
+  )[0]
+  if (topScorer) {
+    awards.push({
+      id: 'most-points-for',
+      emoji: '💪',
+      title: 'Highest Scorer',
+      description: 'Most total points scored all season',
+      entryId: topScorer.entry.id,
+      teamName: topScorer.entry.entry_name,
+      managerName: `${topScorer.entry.player_first_name} ${topScorer.entry.player_last_name}`,
+      stat: `${topScorer.standing.points_for}`,
+      statLabel: 'points for',
+      detail: wdl(
+        topScorer.standing.matches_won,
+        topScorer.standing.matches_drawn,
+        topScorer.standing.matches_lost
+      ),
+      tone: 'success',
+    })
+  }
+
+  // 🍀 Luckiest & 💔 Unluckiest — extremes of the composite luck index.
+  if (luckMetrics.length > 0) {
+    const byLuck = [...luckMetrics].sort((a, b) => b.luckIndex - a.luckIndex)
+    const luckiest = byLuck[0]
+    const unluckiest = byLuck[byLuck.length - 1]
+
+    awards.push({
+      id: 'luckiest',
+      emoji: '🍀',
+      title: 'Luckiest Manager',
+      description: 'Highest luck index — rode their fortune all year',
+      entryId: luckiest.entryId,
+      teamName: luckiest.teamName,
+      managerName: luckiest.managerName,
+      stat: `${luckiest.luckIndex > 0 ? '+' : ''}${luckiest.luckIndex}`,
+      statLabel: 'luck index',
+      detail: `${luckiest.luckyWins} lucky wins · ${luckiest.narrowWins} narrow`,
+      tone: 'success',
+    })
+
+    // Only award unluckiest if it's a distinct, genuinely unlucky manager.
+    if (unluckiest.entryId !== luckiest.entryId && unluckiest.luckIndex < 0) {
+      awards.push({
+        id: 'unluckiest',
+        emoji: '💔',
+        title: 'Unluckiest Manager',
+        description: 'Lowest luck index — deserved better all year',
+        entryId: unluckiest.entryId,
+        teamName: unluckiest.teamName,
+        managerName: unluckiest.managerName,
+        stat: `${unluckiest.luckIndex}`,
+        statLabel: 'luck index',
+        detail: `${unluckiest.unluckyLosses} unlucky losses`,
+        tone: 'danger',
+      })
+    }
+  }
+
+  // ☀️ Summer Champion — winner of the post-GW20 mini-league.
+  // The prop's rank is filled client-side, so rank by points then PF here.
+  const summerWinner = [...summerStandings].sort((a, b) => {
+    if (b.total !== a.total) return b.total - a.total
+    return b.pointsFor - a.pointsFor
+  })[0]
+  if (summerWinner && summerWinner.wins + summerWinner.draws + summerWinner.losses > 0) {
+    awards.push({
+      id: 'summer-champion',
+      emoji: '☀️',
+      title: 'Summer Champion',
+      description: 'Best record from GW20 onwards',
+      entryId: summerWinner.entry.id,
+      teamName: summerWinner.entry.entry_name,
+      managerName: `${summerWinner.entry.player_first_name} ${summerWinner.entry.player_last_name}`,
+      stat: `${summerWinner.total}`,
+      statLabel: 'league pts',
+      detail: wdl(summerWinner.wins, summerWinner.draws, summerWinner.losses),
+      tone: 'warning',
+    })
+  }
+
+  // ⚔️ Most dominant head-to-head — the most lopsided rivalry.
+  // h2h[a][b] is a's record vs b; the dominant direction maximises wins − losses.
+  let topRivalry = { aId: 0, bId: 0, margin: -Infinity, wins: 0, losses: 0, draws: 0 }
+  Object.entries(h2h).forEach(([aIdStr, row]) => {
+    const aId = Number(aIdStr)
+    Object.entries(row).forEach(([bIdStr, rec]) => {
+      const played = rec.wins + rec.draws + rec.losses
+      if (played === 0) return
+      const margin = rec.wins - rec.losses
+      if (margin > topRivalry.margin || (margin === topRivalry.margin && rec.wins > topRivalry.wins)) {
+        topRivalry = { aId, bId: Number(bIdStr), margin, wins: rec.wins, losses: rec.losses, draws: rec.draws }
+      }
+    })
+  })
+  if (topRivalry.margin > 0) {
+    const victor = nameFor(topRivalry.aId)
+    const victim = nameFor(topRivalry.bId)
+    awards.push({
+      id: 'dominant-h2h',
+      emoji: '⚔️',
+      title: 'Biggest Bully',
+      description: 'Most dominant head-to-head record',
+      entryId: topRivalry.aId,
+      teamName: victor.teamName,
+      managerName: victor.managerName,
+      stat: wdl(topRivalry.wins, topRivalry.draws, topRivalry.losses),
+      statLabel: `vs ${victim.teamName}`,
+      detail: `Owned ${victim.managerName}`,
+      tone: 'accent',
+    })
+  }
+
+  return awards
 }
