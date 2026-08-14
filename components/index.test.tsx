@@ -29,6 +29,7 @@ import { WhatIf } from './WhatIf'
 import { Fixtures } from './Fixtures'
 import { LuckMetrics } from './LuckMetrics'
 import { SeasonRecap } from './SeasonRecap'
+import { Dashboard } from './Dashboard'
 
 // ===== HEADER =====
 describe('Header', () => {
@@ -1331,4 +1332,83 @@ describe('computeBpsStats', () => {
     expect(maxBps).toBe(0)
     expect(ranks.size).toBe(0)
   })
+})
+
+// ===== PRE-DRAFT LEAGUE (season rollover) =====
+// A brand new season returns league entries with no standings, no matches and no
+// transactions. Every tab must still render instead of crashing the whole page.
+describe('Dashboard with pre-draft league data', () => {
+  const entry = {
+    id: 1,
+    entry_id: 100,
+    entry_name: 'Team A',
+    player_first_name: 'John',
+    player_last_name: 'Doe',
+    short_name: 'JD',
+    waiver_pick: 1,
+  }
+
+  const managers = [
+    {
+      entry,
+      standing: {
+        league_entry: 1,
+        rank: 0,
+        last_rank: 0,
+        rank_sort: 0,
+        matches_played: 0,
+        matches_won: 0,
+        matches_drawn: 0,
+        matches_lost: 0,
+        points_for: 0,
+        points_against: 0,
+        total: 0,
+      },
+      squad: [],
+    },
+  ]
+
+  beforeEach(() => {
+    // Mirror what the API routes return with no season data yet.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => ({
+        ok: true,
+        json: async () => (url.includes('what-if') ? [] : { fixtures: [], totalEvents: 38 }),
+      }))
+    )
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  const renderDashboard = () =>
+    render(
+      <Dashboard
+        currentEvent={1}
+        managers={managers}
+        currentFixtures={[]}
+        matches={[]}
+        pointsBreakdown={{}}
+        form={{}}
+        summerStandings={[]}
+        h2h={{}}
+        entries={[entry]}
+        transactions={[]}
+        transactionsEvent={1}
+        luckMetrics={[]}
+      />
+    )
+
+  it.each(['Recap', 'Live', 'Results', 'PL', 'Fixtures', 'What If?'])(
+    'renders the %s tab without crashing',
+    async (label) => {
+      renderDashboard()
+      fireEvent.click(screen.getByRole('tab', { name: label }))
+      await waitFor(() => {
+        expect(screen.getByRole('tabpanel')).toBeInTheDocument()
+      })
+    }
+  )
 })
