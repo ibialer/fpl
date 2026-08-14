@@ -6,6 +6,7 @@ import {
   BootstrapStatic,
   TransactionsResponse,
   ManagerWithSquad,
+  Standing,
   FixtureWithNames,
   TransactionWithDetails,
   Player,
@@ -103,6 +104,24 @@ export async function fetchAllData() {
   }
 }
 
+// A pre-draft league returns its entries before any standings row exists,
+// so every consumer of ManagerWithSquad gets a zeroed standing instead of undefined.
+function emptyStanding(leagueEntryId: number): Standing {
+  return {
+    league_entry: leagueEntryId,
+    rank: 0,
+    last_rank: 0,
+    rank_sort: 0,
+    matches_played: 0,
+    matches_won: 0,
+    matches_drawn: 0,
+    matches_lost: 0,
+    points_for: 0,
+    points_against: 0,
+    total: 0,
+  }
+}
+
 // Process data for components
 export function processManagersWithSquads(
   leagueDetails: LeagueDetails,
@@ -126,7 +145,9 @@ export function processManagersWithSquads(
   })
 
   return leagueDetails.league_entries.map((entry) => {
-    const standing = leagueDetails.standings.find((s) => s.league_entry === entry.id)!
+    const standing =
+      leagueDetails.standings.find((s) => s.league_entry === entry.id) ||
+      emptyStanding(entry.id)
     const squad = ownershipMap.get(entry.entry_id) || []
 
     // Sort squad by position
@@ -1248,6 +1269,9 @@ export function calculateSeasonAwards(
   summerStandings: SummerStandingLike[],
   h2h: Record<number, Record<number, H2HRecord>>
 ): SeasonAward[] {
+  // Nothing to award until a gameweek has actually been played.
+  if (!matches.some((m) => m.finished)) return []
+
   const awards: SeasonAward[] = []
 
   const entryById = new Map(entries.map((e) => [e.id, e]))

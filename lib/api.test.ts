@@ -809,6 +809,25 @@ describe('processManagersWithSquads', () => {
     expect(result[0].squad).toHaveLength(0)
     expect(result[1].squad).toHaveLength(0)
   })
+
+  // Pre-draft leagues (new season) return entries but an empty standings array.
+  it('synthesises a zeroed standing for entries with no standings row', () => {
+    const leagueDetails = createMockLeagueDetails({ standings: [], matches: [] })
+    const bootstrap = createMockBootstrapStatic()
+    const elementStatus: ElementStatusResponse = { element_status: [] }
+
+    const result = processManagersWithSquads(leagueDetails, elementStatus, bootstrap)
+
+    expect(result).toHaveLength(2)
+    result.forEach((m, i) => {
+      expect(m.standing).toBeDefined()
+      expect(m.standing.league_entry).toBe(leagueDetails.league_entries[i].id)
+      expect(m.standing.rank).toBe(0)
+      expect(m.standing.matches_played).toBe(0)
+      expect(m.standing.points_for).toBe(0)
+      expect(m.standing.total).toBe(0)
+    })
+  })
 })
 
 describe('processWhatIfSquads', () => {
@@ -1675,5 +1694,10 @@ describe('calculateSeasonAwards', () => {
   it('returns no luck or gameweek awards when inputs are empty', () => {
     const awards = calculateSeasonAwards([], [], entries, [], [], {})
     expect(awards).toEqual([])
+  })
+
+  it('returns no awards before any gameweek has finished', () => {
+    const unplayed = matches.map((m) => ({ ...m, finished: false, started: false }))
+    expect(calculateSeasonAwards(managers, unplayed, entries, luckMetrics, summerStandings, h2h)).toEqual([])
   })
 })
